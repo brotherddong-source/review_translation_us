@@ -555,23 +555,26 @@
     /* ── Lightbox ── */
     #imgLightbox {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.88); z-index: 9999;
-      align-items: center; justify-content: center; cursor: zoom-out;
+      z-index: 9999; align-items: center; justify-content: center;
     }
     #imgLightbox.open { display: flex; }
-    #imgLightbox img {
-      max-width: 90vw; max-height: 90vh;
-      object-fit: contain; border-radius: 0.25rem;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-      cursor: default; transition: transform 0.25s;
+    #lbCard {
+      background: white; border-radius: 0.75rem;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.06);
+      padding: 0.5rem; position: relative;
+      max-width: min(80vw, 960px); max-height: 85vh; overflow: auto;
+    }
+    #lbCard img {
+      display: block; max-width: 75vw; max-height: calc(85vh - 2.5rem);
+      object-fit: contain; border-radius: 0.375rem; transition: transform 0.25s;
     }
     #lbClose {
-      position: fixed; top: 1rem; right: 1.25rem;
-      color: white; font-size: 2rem; line-height: 1;
+      position: absolute; top: 0.375rem; right: 0.5rem;
+      color: var(--text-muted); font-size: 1.125rem; line-height: 1;
       background: none; border: none; cursor: pointer;
-      opacity: 0.75; transition: opacity 0.15s;
+      padding: 0.25rem 0.4rem; border-radius: 0.375rem; transition: all 0.15s;
     }
-    #lbClose:hover { opacity: 1; }
+    #lbClose:hover { background: var(--error-light); color: var(--error); }
   </style>
 </head>
 <body>
@@ -796,8 +799,10 @@
 
 <!-- ── Lightbox ── -->
 <div id="imgLightbox" onclick="closeLightbox(event)">
-  <button id="lbClose" onclick="closeLightbox()">✕</button>
-  <img id="lbImg" src="" alt="" onclick="event.stopPropagation()">
+  <div id="lbCard">
+    <button id="lbClose" onclick="closeLightbox()">✕</button>
+    <img id="lbImg" src="" alt="">
+  </div>
 </div>
 
 <button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
@@ -1100,7 +1105,7 @@ function openLightbox(img) {
   document.body.style.overflow = 'hidden';
 }
 function closeLightbox(e) {
-  if (e && e.target.id === 'lbImg') return;
+  if (e && e.target.closest('#lbCard')) return;
   document.getElementById('imgLightbox').classList.remove('open');
   document.body.style.overflow = '';
 }
