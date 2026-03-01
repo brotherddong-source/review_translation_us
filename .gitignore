@@ -1,0 +1,21 @@
+# API key — 절대 커밋하지 않음
+config.txt
+
+# Next.js
+.next/
+node_modules/
+npm-debug.log*
+
+# Vercel
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 환경변수 (API 키 포함 — 절대 커밋 금지)
+.env.local
+.env*.local
+
+# Claude Code
+.claude/

@@ -1,0 +1,1868 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>특허 번역 검토기</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #eff6ff;
+      --success: #16a34a;
+      --success-light: #f0fdf4;
+      --warning: #d97706;
+      --error: #dc2626;
+      --error-light: #fef2f2;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-icon { font-size: 1.75rem; }
+    .header-text { flex: 1; }
+    .header-text h1 { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; }
+    .header-text p  { font-size: 0.7rem; opacity: 0.75; margin-top: 0.1rem; }
+
+    .api-badge {
+      display: flex; align-items: center; gap: 0.375rem;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.3rem 0.75rem;
+      border-radius: 2rem;
+      border: 1.5px solid;
+    }
+    .api-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .api-badge.ok   { color: #86efac; border-color: #86efac; }
+    .api-badge.ok   .dot { background: #4ade80; }
+    .api-badge.fail { color: #fca5a5; border-color: #fca5a5; }
+    .api-badge.fail .dot { background: #f87171; }
+
+    /* ── Alert Banner ── */
+    .alert {
+      display: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+    .alert.error   { background: #fef2f2; color: var(--error); border-bottom: 1px solid #fecaca; }
+    .alert.warning { background: #fffbeb; color: var(--warning); border-bottom: 1px solid #fde68a; }
+    .alert.visible { display: block; }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } }
+
+    .left-panel  { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 65px; }
+    .right-panel { display: flex; flex-direction: column; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.125rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .card-title {
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 0.875rem;
+      display: flex; align-items: center; gap: 0.375rem;
+    }
+
+    /* ── File Zones ── */
+    .file-zones { display: flex; flex-direction: column; gap: 0.625rem; }
+
+    .file-zone {
+      border: 2px dashed var(--border);
+      border-radius: 0.625rem;
+      padding: 0.75rem 0.875rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex; align-items: center; gap: 0.625rem;
+      position: relative; overflow: hidden;
+    }
+    .file-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .file-zone:hover      { border-color: var(--primary); background: var(--primary-light); }
+    .file-zone.drag-over  { border-color: var(--primary); background: var(--primary-light); transform: scale(1.01); }
+    .file-zone.loaded     { border-style: solid; border-color: var(--success); background: var(--success-light); }
+
+    .zone-badge {
+      width: 2.25rem; height: 2.25rem; border-radius: 0.5rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.125rem; flex-shrink: 0; background: #f1f5f9;
+    }
+    .file-zone.loaded .zone-badge { background: #dcfce7; }
+
+    .zone-info { flex: 1; min-width: 0; }
+    .zone-label    { font-weight: 600; font-size: 0.8125rem; }
+    .zone-sub      { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.125rem; }
+    .zone-filename {
+      font-size: 0.7rem; color: var(--success); font-weight: 600;
+      margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .zone-clear {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-light); font-size: 1rem;
+      padding: 0.25rem; border-radius: 0.375rem;
+      flex-shrink: 0; display: none; line-height: 1; transition: all 0.15s;
+    }
+    .file-zone.loaded .zone-clear { display: flex; align-items: center; justify-content: center; }
+    .zone-clear:hover { color: var(--error); background: var(--error-light); }
+
+    .token-bar { margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-light); }
+    .token-bar.warn { color: var(--warning); }
+
+    /* ── Prompt badge ── */
+    .prompt-badge-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-top: 0.625rem;
+      padding-top: 0.625rem;
+      border-top: 1px dashed var(--border);
+    }
+    .prompt-badge {
+      flex: 1; font-size: 0.72rem; font-weight: 600;
+      padding: 0.25rem 0.625rem; border-radius: 0.375rem;
+    }
+    .prompt-badge.ok   { background: var(--success-light); color: var(--success); }
+    .prompt-badge.fail { background: #fffbeb; color: var(--warning); }
+    .prompt-badge.loading { background: var(--bg); color: var(--text-muted); }
+    .btn-prompt-reload {
+      background: white; border: 1px solid var(--border);
+      border-radius: 0.375rem; padding: 0.2rem 0.5rem;
+      font-size: 0.75rem; cursor: pointer; color: var(--text-muted);
+      transition: all 0.15s; line-height: 1.4;
+    }
+    .btn-prompt-reload:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── Prompt ── */
+    .prompt-file-bar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0.625rem; border-radius: 0.4rem;
+      font-size: 0.72rem; margin-bottom: 0.5rem;
+    }
+    .prompt-file-bar.loaded { background: var(--success-light); color: var(--success); border: 1px solid #bbf7d0; }
+    .prompt-file-bar.error  { background: var(--error-light); color: var(--warning); border: 1px solid #fed7aa; }
+
+    .prompt-textarea {
+      width: 100%; min-height: 200px; resize: vertical;
+      padding: 0.5rem 0.625rem;
+      border: 1px solid var(--border); border-radius: 0.5rem;
+      font-size: 0.78rem; line-height: 1.65; color: var(--text);
+      font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      background: #fdfdfd;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .prompt-textarea:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: white;
+    }
+
+    .prompt-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+    .btn-sm {
+      padding: 0.3rem 0.625rem; background: white;
+      border: 1px solid var(--border); border-radius: 0.375rem;
+      font-size: 0.7rem; cursor: pointer; color: var(--text-muted);
+      transition: all 0.15s;
+    }
+    .btn-sm:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    /* ── Review Button ── */
+    .btn-review {
+      width: 100%; padding: 1.125rem;
+      background: var(--primary); color: white;
+      border: none; border-radius: 0.75rem;
+      font-size: 1.0625rem; font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      letter-spacing: -0.01em;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+    }
+    .btn-review:hover:not(:disabled) {
+      background: var(--primary-dark);
+      box-shadow: 0 6px 18px rgba(37,99,235,0.45);
+      transform: translateY(-1px);
+    }
+    .btn-review:active:not(:disabled) { transform: translateY(0); }
+    .btn-review:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+    /* ── Results ── */
+    .results-card { flex: 1; }
+    .results-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 0.75rem;
+    }
+    .results-actions { display: flex; gap: 0.5rem; }
+    .btn-action {
+      padding: 0.375rem 0.75rem; background: white;
+      border: 1px solid var(--border); border-radius: 0.5rem;
+      font-size: 0.75rem; cursor: pointer;
+      transition: all 0.15s; color: var(--text); font-weight: 500;
+    }
+    .btn-action:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    .status-bar {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      padding: 0.625rem 0.875rem; border-radius: 0.5rem;
+      font-size: 0.8rem; margin-bottom: 0.75rem; line-height: 1.5;
+    }
+    .status-bar.info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-bar.error   { background: var(--error-light); color: var(--error); border: 1px solid #fecaca; }
+    .status-bar.success { background: var(--success-light); color: var(--success); border: 1px solid #bbf7d0; }
+    .status-bar.warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+
+    .results-content {
+      min-height: 600px; border: 1px solid var(--border);
+      border-radius: 0.625rem; padding: 1.5rem;
+      overflow-y: auto; background: #fafafa; position: relative;
+    }
+    .results-placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 400px; text-align: center; gap: 0.875rem;
+    }
+    .placeholder-icon  { font-size: 3.5rem; }
+    .placeholder-title { font-size: 1rem; font-weight: 600; color: var(--text); }
+    .placeholder-desc  { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── Markdown ── */
+    .md-body { line-height: 1.75; color: var(--text); }
+    .md-body h1 { font-size: 1.375rem; font-weight: 800; margin: 1.5rem 0 0.75rem; }
+    .md-body h2 {
+      font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 0.625rem;
+      color: var(--primary); padding: 0.5rem 0.75rem;
+      background: var(--primary-light); border-left: 3px solid var(--primary);
+      border-radius: 0 0.375rem 0.375rem 0;
+    }
+    .md-body h3 {
+      font-size: 0.9rem; font-weight: 700;
+      margin: 1.5rem 0 0.625rem;
+      color: #1e293b;
+      padding: 0.35rem 0.625rem;
+      background: #f8fafc;
+      border-left: 3px solid #94a3b8;
+      border-radius: 0 0.375rem 0.375rem 0;
+    }
+    .md-body h4 { font-size: 0.875rem; font-weight: 600; margin: 1rem 0 0.375rem; color: var(--text-muted); }
+    .md-body p  { margin: 0.5rem 0; font-size: 0.8625rem; }
+    .md-body ul, .md-body ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+    .md-body li { font-size: 0.8625rem; margin: 0.3rem 0; }
+    .md-body strong { font-weight: 700; }
+    .md-body em { color: #7c3aed; font-style: normal; font-weight: 600; }
+    .md-body code {
+      background: #f1f5f9; padding: 0.15rem 0.4rem; border-radius: 0.25rem;
+      font-size: 0.8rem; font-family: 'Cascadia Code', monospace; color: #c026d3;
+    }
+    .md-body pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
+    .md-body pre code { background: none; color: inherit; padding: 0; }
+    .md-body hr { border: none; border-top: 2px solid var(--border); margin: 1.25rem 0; }
+    .md-body blockquote {
+      border-left: 4px solid #f59e0b;
+      padding: 0.625rem 1rem;
+      color: #92400e;
+      margin: 1rem 0;
+      background: #fffbeb;
+      border-radius: 0 0.375rem 0.375rem 0;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+    /* ── 이슈 테이블 (각 오류/이슈를 담는 테이블) ── */
+    .md-body table {
+      width: 100%; border-collapse: collapse;
+      margin: 0.5rem 0 1rem; font-size: 0.825rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .md-body th {
+      background: #334155; color: white;
+      padding: 0.5rem 0.875rem; text-align: left;
+      font-weight: 600; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    /* 이슈 테이블: 첫 번째 열(항목 키) */
+    .md-body td:first-child {
+      width: 9rem; font-weight: 700; font-size: 0.78rem;
+      color: var(--text); background: #f8fafc;
+      padding: 0.55rem 0.875rem;
+      border-right: 1px solid var(--border);
+      white-space: nowrap; vertical-align: top;
+    }
+    /* 이슈 테이블: 두 번째 열(내용) */
+    .md-body td:last-child {
+      padding: 0.55rem 0.875rem;
+      vertical-align: top; line-height: 1.6;
+    }
+    .md-body td { border-bottom: 1px solid var(--border); }
+    .md-body tr:last-child td { border-bottom: none; }
+    /* 위치 행 강조 */
+    .md-body tr:first-child td { background: var(--primary-light) !important; }
+    .md-body tr:first-child td:first-child { background: #dbeafe !important; }
+
+    /* ── Misc ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.65s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: var(--primary);
+      animation: blink 0.9s step-end infinite;
+      vertical-align: text-bottom; margin-left: 2px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .scroll-top {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      width: 2.5rem; height: 2.5rem;
+      background: var(--primary); color: white;
+      border: none; border-radius: 50%; cursor: pointer;
+      font-size: 1.125rem; display: none;
+      align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+      transition: all 0.15s; z-index: 200;
+    }
+    .scroll-top:hover { background: var(--primary-dark); transform: translateY(-2px); }
+    .scroll-top.visible { display: flex; }
+
+    /* ── Tabs ── */
+    .tab-nav {
+      background: white;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      padding: 0 1.5rem;
+    }
+    .tab-btn {
+      padding: 0.75rem 1.25rem;
+      border: none; background: none;
+      font-size: 0.875rem; font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.15s;
+      letter-spacing: -0.01em;
+    }
+    .tab-btn:hover { color: var(--primary); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Drawing Table ── */
+    .drawing-table {
+      width: 100%; border-collapse: collapse; font-size: 0.8125rem;
+      border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .drawing-table th {
+      background: #334155; color: white;
+      padding: 0.5rem 0.875rem; text-align: left;
+      font-weight: 600; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .drawing-table td {
+      padding: 0.45rem 0.875rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .drawing-table tr:last-child td { border-bottom: none; }
+    .drawing-table tr:hover td { background: var(--primary-light); }
+    .drawing-table tr.fig-start td { border-top: 2px solid #cbd5e1; }
+    .drawing-table td:nth-child(1) { font-weight: 700; color: var(--primary); white-space: nowrap; width: 4.5rem; }
+    .drawing-table td:nth-child(2) { font-family: monospace; color: var(--text-muted); white-space: nowrap; width: 5rem; }
+    .drawing-table td:nth-child(3) { font-weight: 500; }
+    .drawing-table td:nth-child(4) { color: var(--text-muted); }
+
+    /* ── Per-figure layout (image left, table right) ── */
+    .drawing-figure-section {
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 0.625rem;
+      overflow: visible; /* sticky 동작을 위해 visible로 변경 */
+      background: white;
+    }
+    .drawing-figure-header {
+      padding: 0.45rem 0.875rem;
+      background: var(--primary);
+      color: white;
+      font-weight: 700;
+      font-size: 0.875rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      border-radius: 0.625rem 0.625rem 0 0; /* 섹션 overflow:visible 보상 */
+    }
+    .fig-title { flex: 1; }
+    .fig-actions { display: flex; gap: 0.375rem; flex-shrink: 0; }
+    .fig-action-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 0.375rem;
+      color: white;
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.5rem;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .fig-action-btn:hover { background: rgba(255,255,255,0.28); }
+    .fig-action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .drawing-figure-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .drawing-figure-img {
+      padding: 0.75rem;
+      background: #f8fafc;
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      min-height: 120px;
+      overflow: hidden;
+      position: sticky;
+      top: 65px;
+      align-self: start;
+      max-height: calc(100vh - 80px);
+    }
+    .figure-img-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 100%;
+    }
+    .figure-img-wrapper img {
+      max-width: 100%;
+      height: auto;
+      max-height: 500px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      transition: transform 0.3s ease;
+      transform-origin: center center;
+      display: block;
+    }
+    .rotate-btns {
+      position: absolute;
+      bottom: 0.375rem;
+      right: 0.375rem;
+      display: flex;
+      gap: 0.25rem;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .figure-img-wrapper:hover .rotate-btns { opacity: 1; }
+    .rotate-btn {
+      background: rgba(255,255,255,0.95);
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      font-size: 1.05rem;
+      line-height: 1;
+      transition: all 0.15s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    .rotate-btn:hover { background: white; border-color: var(--primary); color: var(--primary); }
+    .drawing-figure-table-wrap {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    @media (max-width: 900px) {
+      .drawing-figure-body { grid-template-columns: 1fr; }
+      .drawing-figure-img { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+
+    /* drawing 결과 영역: overflow visible로 sticky 허용 */
+    #drawingResults { overflow: visible; }
+
+    /* ── Row delete button ── */
+    .td-del {
+      width: 1.75rem; text-align: center;
+      padding: 0 0.25rem !important;
+    }
+    .btn-row-del {
+      background: none; border: none;
+      color: #cbd5e1; cursor: pointer;
+      font-size: 0.85rem; line-height: 1;
+      padding: 0.15rem 0.35rem; border-radius: 0.25rem;
+      transition: all 0.15s; opacity: 0;
+    }
+    tr:hover .btn-row-del { opacity: 1; }
+    .btn-row-del:hover { color: var(--error); background: var(--error-light); }
+
+    /* ── Editable table cells ── */
+    .editable-cell { cursor: text; transition: background 0.1s; }
+    .editable-cell:hover { background: #f0f9ff !important; }
+    .editable-cell:focus {
+      outline: none;
+      background: #fffde7 !important;
+      box-shadow: inset 0 0 0 2px #fbbf24;
+    }
+    .empty-row td { background: #fafafa; }
+    .empty-row td:empty::before {
+      content: attr(data-ph);
+      color: #cbd5e1;
+      font-style: italic;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-icon">⚖️</div>
+  <div class="header-text">
+    <h1>특허 번역 검토기</h1>
+    <p>Patent Translation Review System · Powered by OpenAI</p>
+  </div>
+  <div class="api-badge fail" id="apiBadge">
+    <span class="dot"></span>
+    <span id="apiBadgeText">연결 안됨</span>
+  </div>
+</header>
+
+<!-- ── Alert Banner (config 로드 실패 시) ── -->
+<div class="alert warning" id="alertBanner"></div>
+
+<!-- ── Tab Navigation ── -->
+<div class="tab-nav">
+  <button class="tab-btn active" id="tab-btn-review" onclick="switchTab('review')">🔍 번역 검토</button>
+  <button class="tab-btn" id="tab-btn-drawing" onclick="switchTab('drawing')">📐 도면 번역</button>
+</div>
+
+<!-- ── Review Tab ── -->
+<div id="tab-review" class="tab-panel active">
+<!-- ── Main ── -->
+<div class="container">
+
+  <!-- LEFT -->
+  <div class="left-panel">
+
+    <!-- File Upload -->
+    <div class="card">
+      <div class="card-title">📁 파일 업로드</div>
+      <div class="file-zones">
+
+        <div class="file-zone" id="zone-ko"
+             ondragover="onDragOver(event,'ko')" ondragleave="onDragLeave(event,'ko')" ondrop="onDrop(event,'ko')">
+          <input type="file" accept=".md,.txt" onchange="onFileSelect(event,'ko')">
+          <div class="zone-badge">🇰🇷</div>
+          <div class="zone-info">
+            <div class="zone-label">국문 특허 명세서</div>
+            <div class="zone-sub">Korean Patent Specification (.md)</div>
+            <div class="zone-filename" id="fname-ko"></div>
+          </div>
+          <button class="zone-clear" onclick="clearFile(event,'ko')">✕</button>
+        </div>
+
+        <div class="file-zone" id="zone-en"
+             ondragover="onDragOver(event,'en')" ondragleave="onDragLeave(event,'en')" ondrop="onDrop(event,'en')">
+          <input type="file" accept=".md,.txt" onchange="onFileSelect(event,'en')">
+          <div class="zone-badge">🇺🇸</div>
+          <div class="zone-info">
+            <div class="zone-label">영문 번역 명세서</div>
+            <div class="zone-sub">English Patent Specification (.md)</div>
+            <div class="zone-filename" id="fname-en"></div>
+          </div>
+          <button class="zone-clear" onclick="clearFile(event,'en')">✕</button>
+        </div>
+
+        <div class="file-zone" id="zone-bi"
+             ondragover="onDragOver(event,'bi')" ondragleave="onDragLeave(event,'bi')" ondrop="onDrop(event,'bi')">
+          <input type="file" accept=".md,.txt" onchange="onFileSelect(event,'bi')">
+          <div class="zone-badge">📋</div>
+          <div class="zone-info">
+            <div class="zone-label">국영문 병렬 명세서</div>
+            <div class="zone-sub">Bilingual Aligned Specification (.md)</div>
+            <div class="zone-filename" id="fname-bi"></div>
+          </div>
+          <button class="zone-clear" onclick="clearFile(event,'bi')">✕</button>
+        </div>
+
+      </div>
+      <div class="token-bar" id="tokenBar">파일을 업로드하면 예상 토큰 수가 표시됩니다.</div>
+      <div class="prompt-badge-row">
+        <span class="prompt-badge" id="promptBadge">⏳ 프롬프트 로딩 중...</span>
+        <button class="btn-prompt-reload" onclick="reloadPromptFile()" title="prompt.txt 재로드">↩</button>
+        <button class="btn-prompt-reload" onclick="pickPromptFile()" title="파일 직접 선택">📂</button>
+        <input type="file" id="promptFilePicker" accept=".txt,.md" style="display:none" onchange="onPromptFilePicked(event)">
+      </div>
+      <textarea id="promptArea" style="display:none"></textarea>
+    </div>
+
+    <!-- Review Button -->
+    <button class="btn-review" id="reviewBtn" onclick="runReview()">
+      🔍 번역 검토 실행
+    </button>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="card results-card">
+      <div class="results-header">
+        <div class="card-title" style="margin-bottom:0">📊 검토 결과</div>
+        <div class="results-actions" id="resultActions" style="display:none">
+          <button class="btn-action" onclick="copyMarkdown()">📋 마크다운 복사</button>
+          <button class="btn-action" onclick="copyPlain()">📄 텍스트 복사</button>
+        </div>
+      </div>
+      <div id="statusBar" style="display:none"></div>
+      <div class="results-content" id="resultsContent">
+        <div class="results-placeholder">
+          <div class="placeholder-icon">⚖️</div>
+          <div class="placeholder-title">번역 검토를 시작하세요</div>
+          <div class="placeholder-desc">
+            파일을 업로드하고<br>
+            <strong>번역 검토 실행</strong> 버튼을 클릭하세요.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /tab-review -->
+
+<!-- ── Drawing Tab ── -->
+<div id="tab-drawing" class="tab-panel">
+  <div class="container">
+
+    <!-- LEFT -->
+    <div class="left-panel">
+
+      <div class="card">
+        <div class="card-title">📄 도면 PDF 업로드</div>
+        <div class="file-zones">
+          <div class="file-zone" id="zone-pdf"
+               ondragover="onDrawingDragOver(event)" ondragleave="onDrawingDragLeave(event)" ondrop="onDrawingDrop(event)">
+            <input type="file" accept=".pdf" onchange="onDrawingFileSelect(event)">
+            <div class="zone-badge">🗺️</div>
+            <div class="zone-info">
+              <div class="zone-label">국문 도면 (PDF)</div>
+              <div class="zone-sub">Korean Patent Drawing (.pdf)</div>
+              <div class="zone-filename" id="fname-pdf"></div>
+            </div>
+            <button class="zone-clear" onclick="clearDrawingFile(event)">✕</button>
+          </div>
+        </div>
+        <div class="token-bar" id="drawing-info" style="margin-top:0.5rem"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 참고 명세서 <span style="font-weight:400;color:var(--text-light)">(선택)</span></div>
+        <div class="file-zones">
+          <div class="file-zone" id="zone-ref"
+               ondragover="onRefDragOver(event)" ondragleave="onRefDragLeave(event)" ondrop="onRefDrop(event)">
+            <input type="file" accept=".md,.txt" onchange="onRefFileSelect(event)">
+            <div class="zone-badge">📋</div>
+            <div class="zone-info">
+              <div class="zone-label">참고 명세서</div>
+              <div class="zone-sub">국영문 병렬 or 영문 명세서 (.md / .txt)</div>
+              <div class="zone-filename" id="fname-ref"></div>
+            </div>
+            <button class="zone-clear" onclick="clearRefFile(event)">✕</button>
+          </div>
+        </div>
+        <div style="margin-top:0.5rem;font-size:0.72rem;color:#92400e;line-height:1.6;padding:0.375rem 0.625rem;background:#fffbeb;border-radius:0.375rem;border:1px solid #fde68a">
+          ⭐ <strong>국영문 병렬 명세서</strong>가 가장 정확합니다.<br>
+          번역 검토 탭에서 이미 로드했다면 별도 업로드 불필요.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ 추출 옵션</div>
+        <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.5rem;margin-bottom:0.625rem;cursor:pointer">
+          <input type="checkbox" id="opt-use-en" checked style="width:14px;height:14px;cursor:pointer">
+          영문 명세서 참고해서 번역 매칭
+        </label>
+        <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+          <input type="checkbox" id="opt-high-detail" checked style="width:14px;height:14px;cursor:pointer">
+          고해상도 분석 (정확도 ↑, API 비용 ↑)
+        </label>
+        <div style="margin-top:0.75rem;font-size:0.72rem;color:var(--text-muted);line-height:1.65;padding:0.5rem 0.625rem;background:var(--bg);border-radius:0.375rem">
+          💡 AI가 도면 이미지를 직접 분석해 한국어 텍스트를 추출하고,<br>
+          번역 검토 탭에 로드된 영문 명세서와 매칭하여<br>
+          <strong>도면번호 · 도면부호 · 국문 · 영문</strong> 테이블을 제공합니다.
+        </div>
+      </div>
+
+      <button class="btn-review" id="drawingBtn" onclick="runDrawingExtraction()">
+        📐 도면 번역 추출
+      </button>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-panel">
+      <div class="card results-card">
+        <div class="results-header">
+          <div class="card-title" style="margin-bottom:0">📊 도면 번역 테이블</div>
+          <div class="results-actions" id="drawingResultActions" style="display:none">
+            <button class="btn-action" id="retranslateBtn" onclick="runRetranslate()" style="color:#b45309;border-color:#fcd34d;background:#fffbeb;font-weight:600">📝 번역 재요청</button>
+            <button class="btn-action" id="verifyBtn" onclick="runTermVerify()" style="color:#0f766e;border-color:#5eead4;background:#f0fdfa;font-weight:600">🔎 용어 검증</button>
+            <button class="btn-action" onclick="copyDrawingTsv()">📋 TSV 복사</button>
+            <button class="btn-action" onclick="downloadDrawingCsv()">⬇️ CSV 저장</button>
+            <button class="btn-action" onclick="downloadDrawingDocx()" style="font-weight:600;color:#1d4ed8">📄 DOCX 저장</button>
+          </div>
+        </div>
+        <div id="drawingStatusBar" class="status-bar" style="display:none"></div>
+        <div class="results-content" id="drawingResults">
+          <div class="results-placeholder">
+            <div class="placeholder-icon">📐</div>
+            <div class="placeholder-title">도면 번역 추출을 시작하세요</div>
+            <div class="placeholder-desc">
+              국문 도면 PDF를 업로드하고<br>
+              <strong>도면 번역 추출</strong> 버튼을 클릭하세요.<br><br>
+              <span style="font-size:0.75rem;color:var(--text-light)">
+                도면의 모든 텍스트를 도면번호별로 추출하고<br>
+                영문 번역을 매칭하여 표로 제공합니다.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tab-drawing -->
+
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ═══════════════════════════════════════════════
+// Config & State
+// ═══════════════════════════════════════════════
+let API_KEY = '';
+let API_MODEL = 'gpt-5.2';
+const contents = { ko: '', en: '', bi: '' };
+let resultMarkdown = '';
+let isStreaming = false;
+
+// ─── config 로드: 배포(Next.js /api/config) → 로컬(config.txt) 순서로 시도 ───
+async function loadConfig() {
+  // 1차: /api/config (Next.js / Vercel 배포 환경)
+  try {
+    const apiRes = await fetch('/api/config');
+    if (apiRes.ok) {
+      const data = await apiRes.json().catch(() => null);
+      if (data?.OPENAI_API_KEY) API_KEY = data.OPENAI_API_KEY;
+      if (data?.MODEL) API_MODEL = data.MODEL;
+      if (API_KEY) { setApiBadge(true, `GPT 연결됨 (${API_MODEL})`); return; }
+    }
+  } catch {}
+
+  // 2차 fallback: config.txt (로컬 Python http.server 환경)
+  try {
+    const res = await fetch('config.txt', { cache: 'no-store' });
+    if (!res.ok) throw new Error('not found');
+    const text = await res.text();
+    for (const line of text.split('\n')) {
+      const [k, ...v] = line.trim().split('=');
+      const val = v.join('=').trim();
+      if (k === 'OPENAI_API_KEY' && val && !val.startsWith('sk-여기에')) API_KEY = val;
+      if (k === 'MODEL' && val) API_MODEL = val;
+    }
+    if (API_KEY) {
+      setApiBadge(true, `GPT 연결됨 (${API_MODEL})`);
+    } else {
+      setApiBadge(false, '연결 안됨');
+      showAlert('config.txt 에 OPENAI_API_KEY를 입력해 주세요.');
+    }
+  } catch {
+    setApiBadge(false, '연결 안됨');
+    showAlert('⚠ API 키 설정을 확인해 주세요. (Vercel 환경변수 또는 로컬 config.txt)');
+  }
+}
+
+function setApiBadge(ok, text) {
+  const el = document.getElementById('apiBadge');
+  el.className = `api-badge ${ok ? 'ok' : 'fail'}`;
+  document.getElementById('apiBadgeText').textContent = text;
+}
+
+function showAlert(msg) {
+  const el = document.getElementById('alertBanner');
+  el.textContent = msg;
+  el.className = 'alert warning visible';
+}
+
+// ─── prompt.txt 로드 ───
+async function reloadPromptFile() {
+  try {
+    const res = await fetch('prompt.txt', { cache: 'no-store' });
+    if (!res.ok) throw new Error();
+    document.getElementById('promptArea').value = await res.text();
+    setPromptBar('loaded', '✓ prompt.txt 로드됨');
+  } catch {
+    setPromptBar('error', '⚠ prompt.txt 자동 로드 실패 — [파일 선택]으로 직접 불러오세요.');
+  }
+}
+
+function setPromptBar(type, msg) {
+  const badge = document.getElementById('promptBadge');
+  badge.className = `prompt-badge ${type === 'loaded' ? 'ok' : type === 'error' ? 'fail' : 'loading'}`;
+  badge.textContent = type === 'loaded' ? `📝 ${msg}` : `⚠ ${msg}`;
+}
+
+function pickPromptFile() { document.getElementById('promptFilePicker').click(); }
+function onPromptFilePicked(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => { document.getElementById('promptArea').value = ev.target.result; setPromptBar('loaded', `✓ ${file.name} 로드됨`); };
+  r.readAsText(file, 'UTF-8');
+}
+
+// ─── 초기화 ───
+loadConfig();
+reloadPromptFile();
+
+// ═══════════════════════════════════════════════
+// File Handling
+// ═══════════════════════════════════════════════
+function onDragOver(e, k) { e.preventDefault(); document.getElementById(`zone-${k}`).classList.add('drag-over'); }
+function onDragLeave(e, k) { document.getElementById(`zone-${k}`).classList.remove('drag-over'); }
+function onDrop(e, k) {
+  e.preventDefault();
+  document.getElementById(`zone-${k}`).classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) loadFile(f, k);
+}
+function onFileSelect(e, k) { const f = e.target.files[0]; if (f) loadFile(f, k); }
+
+function loadFile(file, k) {
+  const r = new FileReader();
+  r.onload = e => {
+    contents[k] = e.target.result;
+    document.getElementById(`fname-${k}`).textContent = `✓ ${file.name}`;
+    document.getElementById(`zone-${k}`).classList.add('loaded');
+    updateTokenBar();
+  };
+  r.readAsText(file, 'UTF-8');
+}
+
+function clearFile(e, k) {
+  e.stopPropagation(); e.preventDefault();
+  contents[k] = '';
+  document.getElementById(`fname-${k}`).textContent = '';
+  const z = document.getElementById(`zone-${k}`);
+  z.classList.remove('loaded');
+  z.querySelector('input[type="file"]').value = '';
+  updateTokenBar();
+}
+
+function updateTokenBar() {
+  const n = Object.values(contents).reduce((s, c) => s + c.length, 0);
+  const bar = document.getElementById('tokenBar');
+  if (!n) { bar.textContent = '파일을 업로드하면 예상 토큰 수가 표시됩니다.'; bar.className = 'token-bar'; return; }
+  const est = Math.ceil(n / 2.5);
+  bar.textContent = `총 ${n.toLocaleString()}자 · 예상 입력 토큰 ~${est.toLocaleString()}`;
+  bar.className = est > 80000 ? 'token-bar warn' : 'token-bar';
+  if (est > 80000) bar.textContent += ' ⚠️ 토큰이 많습니다';
+}
+
+// ═══════════════════════════════════════════════
+// Review
+// ═══════════════════════════════════════════════
+async function runReview() {
+  if (isStreaming) return;
+
+  if (!API_KEY) {
+    showStatus('error', '❌ API Key가 연결되지 않았습니다. config.txt를 확인해 주세요.');
+    return;
+  }
+  const prompt = document.getElementById('promptArea').value.trim();
+  if (!prompt) { showStatus('error', '❌ 프롬프트가 없습니다. prompt.txt를 확인하거나 프롬프트 섹션(▼)을 열어 직접 입력하세요.'); return; }
+  if (!Object.values(contents).some(c => c.length)) { showStatus('error', '❌ 최소 하나의 파일을 업로드해 주세요.'); return; }
+
+  let userMsg = '다음 특허 명세서들을 검토해 주세요.\n';
+  if (contents.ko) userMsg += `\n---\n## [INPUT 1] 국문 특허 명세서\n\n${contents.ko}\n`;
+  if (contents.en) userMsg += `\n---\n## [INPUT 2] 영문 번역 명세서\n\n${contents.en}\n`;
+  if (contents.bi) userMsg += `\n---\n## [INPUT 3] 국영문 병렬 명세서\n\n${contents.bi}\n`;
+
+  isStreaming = true;
+  const btn = document.getElementById('reviewBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> AI 검토 중...';
+  document.getElementById('resultActions').style.display = 'none';
+  showStatus('info', '⏳ AI가 번역을 분석하고 있습니다. 문서 길이에 따라 1~3분 소요될 수 있습니다...');
+  setResults('<div class="results-placeholder"><div class="placeholder-icon">⏳</div><div class="placeholder-title">분석 중...</div></div>');
+  resultMarkdown = '';
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: prompt },
+          { role: 'user',   content: userMsg }
+        ],
+        max_completion_tokens: 16384,
+        temperature: 0.2,
+        stream: true
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', lastRender = 0;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try { resultMarkdown += JSON.parse(raw).choices?.[0]?.delta?.content ?? ''; } catch {}
+      }
+      const now = Date.now();
+      if (now - lastRender > 200) { lastRender = now; renderResult(true); }
+    }
+
+    renderResult(false);
+    document.getElementById('resultActions').style.display = 'flex';
+    showStatus('success', '✅ 검토 완료');
+
+  } catch (err) {
+    showStatus('error', `❌ 오류: ${err.message}`);
+    if (!resultMarkdown) setResults(`<div class="results-placeholder"><div class="placeholder-icon">⚠️</div><div class="placeholder-title">오류 발생</div><div class="placeholder-desc">${escHtml(err.message)}</div></div>`);
+    else renderResult(false);
+  } finally {
+    isStreaming = false;
+    btn.disabled = false;
+    btn.innerHTML = '🔍 번역 검토 실행';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// GPT 출력 → Markdown 전처리
+// ═══════════════════════════════════════════════
+function preprocessMd(raw) {
+  let t = raw;
+
+  // ① ===+ Ⅰ/Ⅱ 섹션 헤더  (같은 줄에 있는 경우)
+  t = t.replace(/={5,}\s*((?:[ⅠⅡⅢⅣ])[^\n]+?)(?:\s*={5,})?\s*$/gm, '\n## $1');
+
+  // ② ────+ 다음 줄에 III./IV. 헤더
+  t = t.replace(/─{5,}[─\s]*\n\s*((?:III|IV)[.\s][^\n]+)/g, '\n## $1\n');
+
+  // ③ ────+ 다음 줄에 [위치 표기...] 헤더
+  t = t.replace(/─{5,}[─\s]*\n\s*(\[위치 표기[^\n]+\])/g, '\n### $1\n');
+
+  // ④ 남은 장식선 제거
+  t = t.replace(/^[─=]{5,}[─=\s]*$/gm, '\n---\n');
+
+  // ⑤ [1] [2] 등 소항목 → ### 헤딩
+  t = t.replace(/^\[(\d+)\]\s+(.+)$/gm, '\n### [$1] $2\n');
+
+  // ⑥ ※ 결론 노트 → 인용 블록
+  t = t.replace(/^(※.+)$/gm, '\n> 💡 $1\n');
+
+  // ⑦ 필드 라벨(단독 줄) → 굵게 + 아이콘
+  const LABELS = [
+    '위치', '문제되는 부분\\(원문 인용\\)', '문제 내용',
+    '권리범위 또는 기술적 영향', '해결방법 제안',
+    '누락된 국문 부분\\(인용\\)', '영문 대응 여부', '권리범위 영향',
+    '국문 표현', '영문 표현', '범위 확장\\/축소 여부',
+    '문제되는 영문 표현', '문제되는 영문 문장',
+    '권리범위 변경 가능성', '무효 리스크', '보정 필요성',
+    '종합 위험도', '국문 명세서 완성도 점수', '영문 번역 품질 점수', '종합 점수'
+  ];
+  for (const lbl of LABELS) {
+    t = t.replace(new RegExp(`^(${lbl})$`, 'gm'), '**▸ $1**');
+  }
+
+  // ⑧ 연속 빈 줄 정리
+  t = t.replace(/\n{3,}/g, '\n\n');
+
+  return t;
+}
+
+// ═══════════════════════════════════════════════
+// Render & Utils
+// ═══════════════════════════════════════════════
+function renderResult(cur) {
+  const processed = preprocessMd(resultMarkdown + (cur ? '\u200B' : ''));
+  document.getElementById('resultsContent').innerHTML =
+    `<div class="md-body">${marked.parse(processed)}${cur ? '<span class="cursor"></span>' : ''}</div>`;
+}
+function setResults(html) { document.getElementById('resultsContent').innerHTML = html; }
+function showStatus(type, msg) {
+  const el = document.getElementById('statusBar');
+  el.className = `status-bar ${type}`; el.innerHTML = msg; el.style.display = 'flex';
+}
+function copyMarkdown() {
+  navigator.clipboard.writeText(resultMarkdown).then(() => flash('📋 마크다운 복사', '✅ 복사됨!'));
+}
+function copyPlain() {
+  const el = document.querySelector('.md-body');
+  navigator.clipboard.writeText(el ? el.innerText : resultMarkdown).then(() => flash('📄 텍스트 복사', '✅ 복사됨!'));
+}
+function flash(orig, msg) {
+  document.querySelectorAll('.btn-action').forEach(b => {
+    if (b.textContent === orig) { b.textContent = msg; setTimeout(() => b.textContent = orig, 2000); }
+  });
+}
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+window.addEventListener('scroll', () => {
+  document.getElementById('scrollTop').classList.toggle('visible', window.scrollY > 300);
+});
+
+// ═══════════════════════════════════════════════
+// Drawing Translation Tab
+// ═══════════════════════════════════════════════
+
+// ─── PDF.js worker setup ───
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ─── Tab switching ───
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.id === `tab-btn-${name}`);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === `tab-${name}`);
+  });
+}
+
+// ─── Drawing state ───
+let drawingPdfBytes = null;
+let drawingPdfName = '';
+let isExtractingDrawing = false;
+let drawingTsvData = '';
+let pageImages = [];
+let drawingFigureData = [];
+let drawingRefSpec = '';
+
+// ─── Drawing file handlers ───
+function onDrawingFileSelect(e) { const f = e.target.files[0]; if (f) loadDrawingFile(f); }
+function onDrawingDrop(e) {
+  e.preventDefault();
+  document.getElementById('zone-pdf').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) loadDrawingFile(f);
+}
+function onDrawingDragOver(e) { e.preventDefault(); document.getElementById('zone-pdf').classList.add('drag-over'); }
+function onDrawingDragLeave(e) { document.getElementById('zone-pdf').classList.remove('drag-over'); }
+
+function loadDrawingFile(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) { alert('PDF 파일만 업로드 가능합니다.'); return; }
+  const r = new FileReader();
+  r.onload = async e => {
+    drawingPdfBytes = e.target.result;
+    drawingPdfName = file.name;
+    document.getElementById('fname-pdf').textContent = `✓ ${file.name}`;
+    document.getElementById('zone-pdf').classList.add('loaded');
+    try {
+      const pdf = await pdfjsLib.getDocument({ data: drawingPdfBytes.slice(0) }).promise;
+      document.getElementById('drawing-info').textContent = `📄 총 ${pdf.numPages}페이지 · 업로드 완료`;
+    } catch { document.getElementById('drawing-info').textContent = '✓ 업로드 완료'; }
+  };
+  r.readAsArrayBuffer(file);
+}
+
+function clearDrawingFile(e) {
+  e.stopPropagation(); e.preventDefault();
+  drawingPdfBytes = null; drawingPdfName = '';
+  document.getElementById('fname-pdf').textContent = '';
+  document.getElementById('zone-pdf').classList.remove('loaded');
+  document.getElementById('zone-pdf').querySelector('input[type=file]').value = '';
+  document.getElementById('drawing-info').textContent = '';
+}
+
+// ─── Main extraction (per-page — guarantees image↔table matching) ───
+async function runDrawingExtraction() {
+  if (isExtractingDrawing) return;
+  if (!drawingPdfBytes) { showDrawingStatus('error', '❌ 도면 PDF를 먼저 업로드해 주세요.'); return; }
+  if (!API_KEY) { showDrawingStatus('error', '❌ API Key가 없습니다. config.txt를 확인해 주세요.'); return; }
+
+  isExtractingDrawing = true;
+  const btn = document.getElementById('drawingBtn');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> 도면 분석 중...';
+  document.getElementById('drawingResultActions').style.display = 'none';
+
+  try {
+    showDrawingStatus('info', '⏳ 도면 PDF를 읽고 있습니다...');
+    const pdf = await pdfjsLib.getDocument({ data: drawingPdfBytes.slice(0) }).promise;
+    const totalPages = pdf.numPages;
+
+    if (totalPages > 20) {
+      const ok = confirm(`총 ${totalPages}페이지입니다. 페이지당 1회 API 호출 방식으로 정확한 매칭을 제공합니다.\n계속하시겠습니까?`);
+      if (!ok) { isExtractingDrawing = false; btn.disabled = false; btn.innerHTML = '📐 도면 번역 추출'; return; }
+    }
+
+    const useHighDetail = document.getElementById('opt-high-detail').checked;
+    const detail = useHighDetail ? 'high' : 'low';
+    const scale = useHighDetail ? 2.0 : 1.2;
+
+    // Step 1: Render all pages to images
+    pageImages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      showDrawingStatus('info', `⏳ 페이지 렌더링 중... (${i}/${totalPages})`);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      pageImages.push(canvas.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    }
+
+    const refSpec = document.getElementById('opt-use-en').checked
+      ? (drawingRefSpec || contents.en || '')
+      : '';
+
+    // Step 2: Clear results, process each page individually (guarantees 1:1 matching)
+    const resultsEl = document.getElementById('drawingResults');
+    resultsEl.innerHTML = '';
+    drawingFigureData = [];
+    let totalItems = 0;
+
+    for (let i = 0; i < totalPages; i++) {
+      const placeholder = createFigurePlaceholder(i + 1, pageImages[i]);
+      resultsEl.appendChild(placeholder);
+      showDrawingStatus('info', `⏳ 페이지 ${i + 1} / ${totalPages} 분석 중...`);
+      try {
+        const result = await analyzeOnePage(pageImages[i], i + 1, detail, refSpec);
+        updateFigureSection(placeholder, i + 1, result);
+        totalItems += result.rows.length;
+      } catch (err) {
+        updateFigureSectionError(placeholder, i + 1, err.message);
+      }
+    }
+
+    showDrawingStatus('success', `✅ 도면 번역 추출 완료 — 총 ${totalItems}개 항목`);
+    document.getElementById('drawingResultActions').style.display = 'flex';
+
+  } catch (err) {
+    showDrawingStatus('error', `❌ 오류: ${err.message}`);
+  } finally {
+    isExtractingDrawing = false;
+    btn.disabled = false; btn.innerHTML = '📐 도면 번역 추출';
+  }
+}
+
+// ─── Analyze a single page image ───
+async function analyzeOnePage(imgB64, pageNum, detail, refSpec) {
+  const sysPrompt = `특허 도면 번역 전문가입니다.
+주어진 도면 이미지 1장에서 모든 한국어 텍스트를 추출하고 영문 번역 테이블을 만드세요.
+
+출력 형식 (탭 구분 TSV, 헤더 포함):
+도면번호\t도면부호\t국문\t영문
+
+규칙:
+- 도면번호: 도면에 표기된 번호 (예: "도 1", "도 2"). 없으면 "도 ${pageNum}" 사용
+- 도면부호: 숫자 도면부호 (예: 100, 110). 없으면 "-"
+- 국문: 추출된 한국어 텍스트 (라벨, 설명어, 제목 등)
+- 영문: ${refSpec ? '아래 명세서에서 찾은 정확한 번역어. 없으면 직접 번역' : '정확한 영문 번역'}
+- 한국어 텍스트가 있는 항목만 추출하세요. 숫자 도면부호만 있고 한국어 라벨이 없는 경우는 제외
+- 도면에 한국어 텍스트가 전혀 없으면 헤더만 출력
+- 코드블록 없이 TSV만 출력${refSpec ? '\n\n[참고 명세서]\n' + refSpec.substring(0, 3000) : ''}`;
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    body: JSON.stringify({
+      model: API_MODEL,
+      messages: [
+        { role: 'system', content: sysPrompt },
+        { role: 'user', content: [
+          { type: 'text', text: `페이지 ${pageNum} 도면 이미지입니다. 한국어 텍스트를 추출해 TSV로 출력해주세요.` },
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imgB64}`, detail } }
+        ]}
+      ],
+      max_completion_tokens: 1024,
+      temperature: 0.1
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  let tsv = data.choices[0].message.content.trim()
+    .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
+
+  const lines = tsv.split('\n').filter(l => l.trim());
+  if (lines.length < 2) {
+    return { fig: `도 ${pageNum}`, header: ['도면번호', '도면부호', '국문', '영문'], rows: [] };
+  }
+  const header = lines[0].split('\t').map(h => h.trim());
+  const rows = lines.slice(1).map(l => l.split('\t'));
+  const figName = rows[0]?.[0]?.trim() || `도 ${pageNum}`;
+  return { fig: figName, header, rows };
+}
+
+// ─── Create a placeholder section (shows image immediately while API runs) ───
+function createFigurePlaceholder(pageNum, imgB64) {
+  const div = document.createElement('div');
+  div.className = 'drawing-figure-section';
+  div.dataset.page = String(pageNum);
+  div.innerHTML = `
+    <div class="drawing-figure-header">
+      <span class="fig-title">페이지 ${pageNum} · 분석 중...</span>
+      <div class="fig-actions">
+        <button class="fig-action-btn" onclick="retranslateFigure(this)" title="이 도면의 미번역 항목을 번역">📝 번역</button>
+        <button class="fig-action-btn" onclick="reanalyzeFigure(this)" title="이 도면 이미지를 다시 분석">🔄 재분석</button>
+      </div>
+    </div>
+    <div class="drawing-figure-body">
+      <div class="drawing-figure-img">
+        <div class="figure-img-wrapper">
+          <img src="data:image/jpeg;base64,${imgB64}" alt="페이지 ${pageNum}" data-rot="0">
+          <div class="rotate-btns">
+            <button class="rotate-btn" onclick="rotateImg(this,-1)" title="반시계 90° 회전">↺</button>
+            <button class="rotate-btn" onclick="rotateImg(this,1)"  title="시계 90° 회전">↻</button>
+          </div>
+        </div>
+      </div>
+      <div class="drawing-figure-table-wrap fig-table-area">
+        <div style="padding:1.5rem;color:var(--text-muted);display:flex;align-items:center;gap:0.5rem">
+          <div class="spinner" style="border-color:rgba(100,116,139,0.25);border-top-color:#94a3b8;width:14px;height:14px;border-width:2px"></div>
+          텍스트 추출 중...
+        </div>
+      </div>
+    </div>`;
+  return div;
+}
+
+// ─── Fill in a section with API results ───
+function updateFigureSection(sectionEl, pageNum, result) {
+  const { fig, header, rows } = result;
+  sectionEl.querySelector('.fig-title').textContent = fig;
+  drawingFigureData.push({ page: pageNum, fig, rows, header });
+
+  const wrap = sectionEl.querySelector('.fig-table-area');
+  const colCount = header.length;
+  const placeholders = ['도면번호', '도면부호', '국문 텍스트', '영문 번역'];
+
+  let html = '<table class="drawing-table"><thead><tr>';
+  html += header.map(h => `<th>${escHtml(h)}</th>`).join('');
+  html += '</tr></thead><tbody>';
+
+  const delBtn = `<td class="td-del"><button class="btn-row-del" onclick="this.closest('tr').remove()" title="행 삭제">✕</button></td>`;
+
+  if (rows.length) {
+    for (const row of rows) {
+      html += '<tr>';
+      html += Array.from({ length: colCount }, (_, i) =>
+        `<td contenteditable="true" class="editable-cell" data-col="${i}" oninput="handleCellInput(this)">${escHtml((row[i] || '').trim())}</td>`
+      ).join('');
+      html += delBtn + '</tr>';
+    }
+  }
+  // Always add an empty row for manual input
+  html += `<tr class="empty-row" data-fig="${escHtml(fig)}">`;
+  html += Array.from({ length: colCount }, (_, i) =>
+    `<td contenteditable="true" class="editable-cell" data-col="${i}" data-ph="${escHtml(placeholders[i] || '')}" oninput="handleCellInput(this)">${i === 0 ? escHtml(fig) : ''}</td>`
+  ).join('');
+  html += delBtn + '</tr></tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function updateFigureSectionError(sectionEl, pageNum, errMsg) {
+  sectionEl.querySelector('.fig-title').textContent = `페이지 ${pageNum} ⚠`;
+  sectionEl.querySelector('.fig-table-area').innerHTML =
+    `<p style="padding:1rem;color:var(--error);font-size:0.8rem">❌ ${escHtml(errMsg)}</p>`;
+}
+
+// ─── Image rotation ───
+function rotateImg(btn, dir) {
+  const img = btn.closest('.figure-img-wrapper').querySelector('img');
+  const cur = parseInt(img.dataset.rot || '0');
+  const next = (cur + dir * 90 + 360) % 360;
+  img.dataset.rot = String(next);
+  img.style.transform = `rotate(${next}deg)`;
+}
+
+// ─── Empty row auto-expand + auto-translate ───
+function handleCellInput(cell) {
+  const row = cell.closest('tr');
+  const tbody = row.closest('tbody');
+  const allRows = [...tbody.querySelectorAll('tr')];
+
+  // Auto-expand: only fires on the last row
+  if (row === allRows[allRows.length - 1]) {
+    const hasSomeContent = [...row.querySelectorAll('td')].some(td => td.textContent.trim());
+    if (hasSomeContent) {
+      const fig = row.dataset.fig || '';
+      const colCount = row.querySelectorAll('td').length;
+      const placeholders = ['도면번호', '도면부호', '국문 텍스트', '영문 번역'];
+      const newRow = document.createElement('tr');
+      newRow.className = 'empty-row';
+      newRow.dataset.fig = fig;
+      for (let i = 0; i < colCount; i++) {
+        const td = document.createElement('td');
+        td.contentEditable = 'true';
+        td.className = 'editable-cell';
+        td.dataset.col = String(i);
+        td.dataset.ph = placeholders[i] || '';
+        td.addEventListener('input', () => handleCellInput(td));
+        if (i === 0) td.textContent = fig;
+        newRow.appendChild(td);
+      }
+      const delTd = document.createElement('td');
+      delTd.className = 'td-del';
+      delTd.innerHTML = '<button class="btn-row-del" onclick="this.closest(\'tr\').remove()" title="행 삭제">✕</button>';
+      newRow.appendChild(delTd);
+      tbody.appendChild(newRow);
+    }
+  }
+
+  // Auto-translate: Korean cell (col 2) typed → debounce → translate to English (col 3)
+  const colIdx = parseInt(cell.dataset.col ?? '-1');
+  if (colIdx === 2) {
+    const cells = [...row.querySelectorAll('td')];
+    const enCell = cells[3];
+    if (enCell) {
+      const ko = cell.textContent.trim();
+      if (ko && !enCell.textContent.trim()) {
+        clearTimeout(cell._autoTransTimer);
+        cell._autoTransTimer = setTimeout(() => autoTranslateCell(cell, enCell), 1200);
+      } else if (!ko) {
+        clearTimeout(cell._autoTransTimer);
+      }
+    }
+  }
+}
+
+// ─── Auto-translate a single Korean cell → English (debounced, called from handleCellInput) ───
+async function autoTranslateCell(koCell, enCell) {
+  const ko = koCell.textContent.trim();
+  if (!ko || enCell.textContent.trim() || !API_KEY) return;
+
+  const origBg = enCell.style.background;
+  enCell.style.background = '#eff6ff';
+  const orig = enCell.textContent;
+  enCell.textContent = '…';
+
+  const refSpec = drawingRefSpec || contents.en || '';
+  const sysPrompt = `특허 도면 번역 전문가입니다. 주어진 한국어 특허 도면 용어를 정확한 영어로 번역해주세요. 번역 결과만 출력하세요.${refSpec ? '\n[참고 명세서]\n' + refSpec.substring(0, 2000) : ''}`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: ko }
+        ],
+        max_completion_tokens: 64,
+        temperature: 0.1
+      })
+    });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    enCell.textContent = data.choices[0].message.content.trim();
+    enCell.style.background = '#dcfce7';
+    setTimeout(() => { enCell.style.background = ''; }, 1800);
+  } catch {
+    enCell.textContent = orig;
+    enCell.style.background = origBg;
+  }
+}
+
+// ─── Re-translate missing English in a specific figure section ───
+async function retranslateFigure(btn) {
+  if (!API_KEY) { alert('API Key가 없습니다.'); return; }
+  const section = btn.closest('.drawing-figure-section');
+
+  const missing = [];
+  section.querySelectorAll('.fig-table-area tbody tr').forEach(tr => {
+    const cells = [...tr.querySelectorAll('td:not(.td-del)')];
+    if (cells.length < 4) return;
+    const ko = cells[2]?.textContent.trim() || '';
+    const en = cells[3]?.textContent.trim() || '';
+    if (ko && !en) missing.push({ cells, figNo: cells[0]?.textContent.trim(), no: cells[1]?.textContent.trim(), ko });
+  });
+
+  if (!missing.length) { showSectionMsg(section, '번역할 항목이 없습니다.', 'info'); return; }
+
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = '⏳';
+  showSectionMsg(section, `⏳ ${missing.length}개 항목 번역 중...`, 'info');
+
+  const refSpec = drawingRefSpec || contents.en || '';
+  const itemsText = missing.map((item, i) =>
+    `${i + 1}. [${item.figNo}] 도면부호: ${item.no} | 국문: ${item.ko}`
+  ).join('\n');
+  const sysPrompt = `특허 도면 번역 전문가입니다. 한국어 특허 도면 용어를 정확한 영어로 번역해주세요.
+번호별로 영문 번역만 출력하세요 (예: "1. frame portion").
+${refSpec ? '아래 명세서를 참고하여 일관된 번역어를 사용하세요.\n[참고 명세서]\n' + refSpec.substring(0, 3000) : ''}`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: `다음 특허 도면 용어들을 영어로 번역해주세요:\n\n${itemsText}` }
+        ],
+        max_completion_tokens: 512,
+        temperature: 0.1
+      })
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    let filled = 0;
+    data.choices[0].message.content.split('\n').forEach(line => {
+      const m = line.match(/^(\d+)[.。\)\s]+(.+)$/);
+      if (!m) return;
+      const idx = parseInt(m[1]) - 1;
+      const translation = m[2].trim();
+      if (missing[idx]?.cells[3]) {
+        missing[idx].cells[3].textContent = translation;
+        missing[idx].cells[3].style.background = '#dcfce7';
+        setTimeout(() => { missing[idx].cells[3].style.background = ''; }, 1800);
+        filled++;
+      }
+    });
+    showSectionMsg(section, `✅ ${filled}개 번역 완료`, 'success');
+  } catch (err) {
+    showSectionMsg(section, `❌ ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+// ─── Re-analyze a specific figure's image ───
+async function reanalyzeFigure(btn) {
+  if (!API_KEY) { alert('API Key가 없습니다.'); return; }
+  const section = btn.closest('.drawing-figure-section');
+  const pageNum = parseInt(section.dataset.page || '0');
+  if (!pageNum || !pageImages[pageNum - 1]) { alert('이미지를 찾을 수 없습니다.\n전체 추출을 먼저 실행해 주세요.'); return; }
+
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = '⏳';
+  showSectionMsg(section, '⏳ 재분석 중...', 'info');
+
+  const detail = document.getElementById('opt-high-detail').checked ? 'high' : 'low';
+  const refSpec = document.getElementById('opt-use-en').checked
+    ? (drawingRefSpec || contents.en || '') : '';
+
+  try {
+    const result = await analyzeOnePage(pageImages[pageNum - 1], pageNum, detail, refSpec);
+    updateFigureSection(section, pageNum, result);
+    showSectionMsg(section, `✅ 재분석 완료 — ${result.rows.length}개 항목`, 'success');
+  } catch (err) {
+    showSectionMsg(section, `❌ ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+// ─── Brief status message inside a figure section ───
+function showSectionMsg(section, msg, type) {
+  let msgEl = section.querySelector('.section-msg');
+  if (!msgEl) {
+    msgEl = document.createElement('div');
+    msgEl.className = 'section-msg';
+    section.insertBefore(msgEl, section.querySelector('.drawing-figure-body'));
+  }
+  const colors = {
+    info:    { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
+    success: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+    error:   { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' }
+  };
+  const c = colors[type] || colors.info;
+  msgEl.style.cssText = `padding:0.3rem 0.875rem;font-size:0.78rem;background:${c.bg};color:${c.color};border-bottom:1px solid ${c.border}`;
+  msgEl.textContent = msg;
+  clearTimeout(msgEl._timer);
+  if (type !== 'error') {
+    msgEl._timer = setTimeout(() => { msgEl.remove(); }, 3000);
+  }
+}
+
+// ─── Ref spec file handlers ───
+function onRefFileSelect(e) { const f = e.target.files[0]; if (f) loadRefFile(f); }
+function onRefDrop(e) {
+  e.preventDefault();
+  document.getElementById('zone-ref').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) loadRefFile(f);
+}
+function onRefDragOver(e) { e.preventDefault(); document.getElementById('zone-ref').classList.add('drag-over'); }
+function onRefDragLeave(e) { document.getElementById('zone-ref').classList.remove('drag-over'); }
+function loadRefFile(file) {
+  const r = new FileReader();
+  r.onload = e => {
+    drawingRefSpec = e.target.result;
+    document.getElementById('fname-ref').textContent = `✓ ${file.name}`;
+    document.getElementById('zone-ref').classList.add('loaded');
+  };
+  r.readAsText(file, 'UTF-8');
+}
+function clearRefFile(e) {
+  e.stopPropagation(); e.preventDefault();
+  drawingRefSpec = '';
+  document.getElementById('fname-ref').textContent = '';
+  document.getElementById('zone-ref').classList.remove('loaded');
+  document.getElementById('zone-ref').querySelector('input[type=file]').value = '';
+}
+
+// ─── Read current table state from DOM ───
+function getDrawingTsvFromDom() {
+  const firstTable = document.querySelector('.fig-table-area table');
+  if (!firstTable) return drawingTsvData;
+
+  const headers = [...firstTable.querySelectorAll('thead th')].map(th => th.textContent.trim());
+  const lines = [headers.join('\t')];
+
+  document.querySelectorAll('.fig-table-area tbody tr').forEach(tr => {
+    const cells = [...tr.querySelectorAll('td:not(.td-del)')].map(td => td.textContent.trim());
+    if (cells[2]) lines.push(cells.join('\t'));
+  });
+
+  return lines.join('\n');
+}
+
+// ─── Re-translate manually added rows ───
+async function runRetranslate() {
+  if (!API_KEY) { showDrawingStatus('error', '❌ API Key가 없습니다.'); return; }
+
+  // Collect rows: Korean filled but English empty
+  const missing = [];
+  document.querySelectorAll('.fig-table-area tbody tr').forEach(tr => {
+    const cells = [...tr.querySelectorAll('td:not(.td-del)')];
+    if (cells.length < 4) return;
+    const ko = cells[2]?.textContent.trim() || '';
+    const en = cells[3]?.textContent.trim() || '';
+    if (ko && !en) missing.push({ cells, figNo: cells[0]?.textContent.trim(), no: cells[1]?.textContent.trim(), ko });
+  });
+
+  if (!missing.length) {
+    alert('번역이 필요한 항목이 없습니다.\n(국문은 입력됐으나 영문이 비어있는 행을 찾습니다)');
+    return;
+  }
+
+  const btn = document.getElementById('retranslateBtn');
+  btn.disabled = true; btn.textContent = '⏳ 번역 중...';
+  showDrawingStatus('info', `⏳ ${missing.length}개 항목을 번역하고 있습니다...`);
+
+  const refSpec = drawingRefSpec || contents.en || '';
+  const itemsText = missing.map((item, i) =>
+    `${i + 1}. [${item.figNo}] 도면부호: ${item.no} | 국문: ${item.ko}`
+  ).join('\n');
+
+  const sysPrompt = `특허 도면 번역 전문가입니다. 한국어 특허 도면 용어를 정확한 영어로 번역해주세요.
+번호별로 영문 번역만 출력하세요 (예: "1. frame portion").
+${refSpec ? '아래 명세서를 참고하여 일관된 번역어를 사용하세요.\n[참고 명세서]\n' + refSpec.substring(0, 4000) : ''}`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: `다음 특허 도면 용어들을 영어로 번역해주세요:\n\n${itemsText}` }
+        ],
+        max_completion_tokens: 2048,
+        temperature: 0.1
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    let filled = 0;
+    data.choices[0].message.content.split('\n').forEach(line => {
+      const m = line.match(/^(\d+)[.。\)\s]+(.+)$/);
+      if (!m) return;
+      const idx = parseInt(m[1]) - 1;
+      const translation = m[2].trim();
+      if (missing[idx]?.cells[3]) {
+        missing[idx].cells[3].textContent = translation;
+        const cell = missing[idx].cells[3];
+        cell.style.background = '#dcfce7';
+        setTimeout(() => { cell.style.background = ''; }, 1800);
+        filled++;
+      }
+    });
+
+    showDrawingStatus('success', `✅ ${filled}개 항목 번역 완료`);
+  } catch (err) {
+    showDrawingStatus('error', `❌ 오류: ${err.message}`);
+  } finally {
+    btn.disabled = false; btn.textContent = '📝 번역 재요청';
+  }
+}
+
+// ─── Term consistency verification ───
+async function runTermVerify() {
+  if (!API_KEY) { showDrawingStatus('error', '❌ API Key가 없습니다.'); return; }
+  const refSpec = drawingRefSpec || contents.en || '';
+  if (!refSpec) {
+    alert('참고 명세서가 없습니다.\n도면 탭에서 명세서를 업로드하거나, 번역 검토 탭에서 영문 명세서를 로드해 주세요.');
+    return;
+  }
+
+  // Collect all (Korean, English) pairs
+  const items = [];
+  document.querySelectorAll('.fig-table-area tbody tr').forEach(tr => {
+    const cells = [...tr.querySelectorAll('td:not(.td-del)')];
+    if (cells.length < 4) return;
+    const ko = cells[2]?.textContent.trim() || '';
+    const en = cells[3]?.textContent.trim() || '';
+    if (ko && en) items.push({ cells, ko, en });
+  });
+
+  if (!items.length) { alert('검증할 항목이 없습니다.'); return; }
+
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true; btn.textContent = '⏳ 검증 중...';
+  showDrawingStatus('info', `⏳ ${items.length}개 용어를 명세서와 대조 중...`);
+
+  const termList = items.map((it, i) => `${i + 1}. 국문: ${it.ko} | 영문: ${it.en}`).join('\n');
+  const sysPrompt = `특허 번역 검토 전문가입니다. 도면 번역 용어들이 아래 명세서의 영문 용어와 일치하는지 확인하세요.
+
+각 항목에 대해 다음 중 하나를 출력하세요:
+- OK: 명세서 표현과 동일하거나 충분히 일치
+- DIFF|수정제안: 명세서에 다른 표현이 있을 경우 (예: "DIFF|connecting member")
+
+번호별로 한 줄씩 출력하세요 (예: "1. OK" 또는 "2. DIFF|support bracket").
+
+[명세서]
+${refSpec.substring(0, 5000)}`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: `다음 도면 번역 용어들을 검증해주세요:\n\n${termList}` }
+        ],
+        max_completion_tokens: 2048,
+        temperature: 0.1
+      })
+    });
+
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+
+    const data = await res.json();
+    let diffCount = 0;
+    data.choices[0].message.content.split('\n').forEach(line => {
+      const m = line.match(/^(\d+)[.。\s]+(.+)$/);
+      if (!m) return;
+      const idx = parseInt(m[1]) - 1;
+      const verdict = m[2].trim();
+      const item = items[idx];
+      if (!item) return;
+      const enCell = item.cells[3];
+      // Clear previous marks
+      enCell.style.background = '';
+      enCell.title = '';
+      if (verdict.startsWith('DIFF')) {
+        const suggestion = verdict.split('|')[1]?.trim() || '';
+        enCell.style.background = '#fef9c3';
+        enCell.style.outline = '2px solid #fbbf24';
+        enCell.title = suggestion ? `명세서 표현: "${suggestion}"` : '명세서와 불일치';
+        if (suggestion) {
+          enCell.dataset.suggestion = suggestion;
+        }
+        diffCount++;
+      } else {
+        enCell.style.outline = '2px solid #86efac';
+        setTimeout(() => { if (enCell.style.outline === '2px solid rgb(134, 239, 172)') enCell.style.outline = ''; }, 2500);
+      }
+    });
+
+    const msg = diffCount
+      ? `⚠️ ${diffCount}개 항목이 명세서 표현과 다릅니다 (노란색 하이라이트). 셀에 마우스를 올리면 제안 표현이 표시됩니다.`
+      : '✅ 모든 용어가 명세서 표현과 일치합니다.';
+    showDrawingStatus(diffCount ? 'warning' : 'success', msg);
+  } catch (err) {
+    showDrawingStatus('error', `❌ 오류: ${err.message}`);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔎 용어 검증';
+  }
+}
+
+function showDrawingStatus(type, msg) {
+  const el = document.getElementById('drawingStatusBar');
+  el.className = `status-bar ${type}`; el.innerHTML = msg; el.style.display = 'flex';
+}
+
+function copyDrawingTsv() {
+  navigator.clipboard.writeText(getDrawingTsvFromDom()).then(() => {
+    const btn = document.querySelector('[onclick="copyDrawingTsv()"]');
+    const orig = btn.textContent; btn.textContent = '✅ 복사됨!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function downloadDrawingCsv() {
+  const csv = getDrawingTsvFromDom().split('\n').map(line =>
+    line.split('\t').map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `도면번역_${drawingPdfName.replace('.pdf', '') || 'drawing'}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+async function downloadDrawingDocx() {
+  const figureSections = document.querySelectorAll('.drawing-figure-section');
+  if (!figureSections.length) { alert('먼저 도면 번역 추출을 실행해 주세요.'); return; }
+  if (typeof docx === 'undefined') { alert('docx 라이브러리 로드 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
+
+  const btn = document.querySelector('[onclick="downloadDrawingDocx()"]');
+  const origText = btn.textContent;
+  btn.textContent = '⏳ 생성 중...'; btn.disabled = true;
+
+  try {
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell,
+            HeadingLevel, TextRun, WidthType, ShadingType } = docx;
+
+    const makeCell = (text, isHeader) => new TableCell({
+      children: [new Paragraph({
+        children: [new TextRun({
+          text: String(text || '').trim(),
+          bold: isHeader,
+          color: isHeader ? 'FFFFFF' : '1e293b',
+          size: isHeader ? 18 : 16
+        })]
+      })],
+      shading: isHeader ? { fill: '334155', type: ShadingType.SOLID } : undefined
+    });
+
+    const docChildren = [
+      new Paragraph({
+        children: [new TextRun({ text: `도면 번역 테이블 — ${drawingPdfName}`, bold: true, size: 32, color: '1e293b' })],
+        heading: HeadingLevel.HEADING_1
+      }),
+      new Paragraph('')
+    ];
+
+    for (const section of figureSections) {
+      const figLabel = section.querySelector('.fig-title')?.textContent.trim() || '도면';
+      const table = section.querySelector('.fig-table-area table');
+      if (!table) continue;
+
+      // Figure heading
+      docChildren.push(new Paragraph({
+        children: [new TextRun({ text: figLabel, bold: true, color: '2563EB', size: 26 })],
+        heading: HeadingLevel.HEADING_2
+      }));
+
+      const headerCells = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+      const bodyRows = [...table.querySelectorAll('tbody tr')]
+        .map(tr => [...tr.querySelectorAll('td:not(.td-del)')].map(td => td.textContent.trim()))
+        .filter(row => row[2]);
+
+      if (bodyRows.length) {
+        const colCount = headerCells.length;
+        const colWidth = Math.floor(9360 / colCount); // total table width in twips
+
+        const tableRows = [
+          new TableRow({ children: headerCells.map(h => makeCell(h, true)), tableHeader: true }),
+          ...bodyRows.map(row => new TableRow({
+            children: Array.from({ length: colCount }, (_, i) => makeCell(row[i] || '', false))
+          }))
+        ];
+
+        docChildren.push(new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: tableRows
+        }));
+      }
+
+      docChildren.push(new Paragraph(''));
+      docChildren.push(new Paragraph(''));
+    }
+
+    const doc = new Document({ sections: [{ children: docChildren }] });
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `도면번역_${drawingPdfName.replace('.pdf', '') || 'drawing'}.docx`;
+    a.click(); URL.revokeObjectURL(url);
+
+  } catch (err) {
+    alert(`DOCX 생성 오류: ${err.message}`);
+  } finally {
+    btn.textContent = origText; btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

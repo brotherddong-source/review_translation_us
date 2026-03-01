@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>특허 번역 검토기</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    :root {
+      --primary: #212121;
+      --primary-dark: #000000;
+      --primary-light: #e0f2fe;
+      --sky: #bae6fd;
+      --sky-dark: #0ea5e9;
+      --success: #16a34a;
+      --success-light: #f0fdf4;
+      --warning: #d97706;
+      --error: #dc2626;
+      --error-light: #fef2f2;
+      --bg: #f7f7f7;
+      --card-bg: #ffffff;
+      --border: #e0e0e0;
+      --text: #212121;
+      --text-muted: #6e6e6e;
+      --text-light: #9e9e9e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #f7f7f7;
+      color: var(--text);
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-icon { font-size: 1.75rem; }
+    .header-text { flex: 1; }
+    .header-text h1 { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+    .header-text p  { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem; }
+
+    .api-badge {
+      display: flex; align-items: center; gap: 0.375rem;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.3rem 0.75rem;
+      border-radius: 2rem;
+      border: 1.5px solid;
+    }
+    .api-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .api-badge.ok   { color: #16a34a; border-color: #bbf7d0; }
+    .api-badge.ok   .dot { background: #4ade80; }
+    .api-badge.fail { color: #dc2626; border-color: #fecaca; }
+    .api-badge.fail .dot { background: #f87171; }
+
+    /* ── Alert Banner ── */
+    .alert {
+      display: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+    }
+    .alert.error   { background: #fef2f2; color: var(--error); border-bottom: 1px solid #fecaca; }
+    .alert.warning { background: #fffbeb; color: var(--warning); border-bottom: 1px solid #fde68a; }
+    .alert.visible { display: block; }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .container { grid-template-columns: 1fr; } }
+
+    .left-panel  { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 65px; }
+    .right-panel { display: flex; flex-direction: column; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.125rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .card-title {
+      font-size: 0.875rem; font-weight: 700;
+      color: var(--text); letter-spacing: 0.01em;
+      margin-bottom: 0.875rem;
+      display: flex; align-items: center; gap: 0.375rem;
+    }
+
+    /* ── File Zones ── */
+    .file-zones { display: flex; flex-direction: column; gap: 0.625rem; }
+
+    .file-zone {
+      border: 2px dashed var(--border);
+      border-radius: 0.625rem;
+      padding: 0.75rem 0.875rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex; align-items: center; gap: 0.625rem;
+      position: relative; overflow: hidden;
+    }
+    .file-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .file-zone:hover      { border-color: var(--sky-dark); background: var(--primary-light); }
+    .file-zone.drag-over  { border-color: var(--sky-dark); background: var(--primary-light); transform: scale(1.01); }
+    .file-zone.loaded     { border-style: solid; border-color: var(--success); background: var(--success-light); }
+
+    .zone-badge {
+      width: 2.25rem; height: 2.25rem; border-radius: 0.5rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.125rem; flex-shrink: 0; background: #f1f5f9;
+    }
+    .file-zone.loaded .zone-badge { background: #dcfce7; }
+
+    .zone-info { flex: 1; min-width: 0; }
+    .zone-label    { font-weight: 600; font-size: 0.8125rem; }
+    .zone-sub      { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.125rem; }
+    .zone-filename {
+      font-size: 0.7rem; color: var(--success); font-weight: 600;
+      margin-top: 0.2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .zone-clear {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-light); font-size: 1rem;
+      padding: 0.25rem; border-radius: 0.375rem;
+      flex-shrink: 0; display: none; line-height: 1; transition: all 0.15s;
+    }
+    .file-zone.loaded .zone-clear { display: flex; align-items: center; justify-content: center; }
+    .zone-clear:hover { color: var(--error); background: var(--error-light); }
+
+    .token-bar { margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-light); }
+    .token-bar.warn { color: var(--warning); }
+
+    /* ── Prompt badge ── */
+    .prompt-badge-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-top: 0.625rem;
+      padding-top: 0.625rem;
+      border-top: 1px dashed var(--border);
+    }
+    .prompt-badge {
+      flex: 1; font-size: 0.72rem; font-weight: 600;
+      padding: 0.25rem 0.625rem; border-radius: 0.375rem;
+    }
+    .prompt-badge.ok   { background: var(--primary-light); color: var(--sky-dark); }
+    .prompt-badge.fail { background: #fffbeb; color: var(--warning); }
+    .prompt-badge.loading { background: var(--bg); color: var(--text-muted); }
+    .btn-prompt-reload {
+      background: white; border: 1px solid var(--border);
+      border-radius: 0.375rem; padding: 0.2rem 0.5rem;
+      font-size: 0.75rem; cursor: pointer; color: var(--text-muted);
+      transition: all 0.15s; line-height: 1.4;
+    }
+    .btn-prompt-reload:hover { border-color: var(--sky-dark); color: var(--sky-dark); }
+
+    /* ── Prompt ── */
+    .prompt-file-bar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0.625rem; border-radius: 0.4rem;
+      font-size: 0.72rem; margin-bottom: 0.5rem;
+    }
+    .prompt-file-bar.loaded { background: var(--success-light); color: var(--success); border: 1px solid #bbf7d0; }
+    .prompt-file-bar.error  { background: var(--error-light); color: var(--warning); border: 1px solid #fed7aa; }
+
+    .prompt-textarea {
+      width: 100%; min-height: 200px; resize: vertical;
+      padding: 0.5rem 0.625rem;
+      border: 1px solid var(--border); border-radius: 0.5rem;
+      font-size: 0.78rem; line-height: 1.65; color: var(--text);
+      font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      background: #fdfdfd;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .prompt-textarea:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: white;
+    }
+
+    .prompt-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+    .btn-sm {
+      padding: 0.3rem 0.625rem; background: white;
+      border: 1px solid var(--border); border-radius: 0.375rem;
+      font-size: 0.7rem; cursor: pointer; color: var(--text-muted);
+      transition: all 0.15s;
+    }
+    .btn-sm:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    /* ── Review Button ── */
+    .btn-review {
+      width: 100%; padding: 1.125rem;
+      background: #2563eb; color: white;
+      border: none; border-radius: 0.75rem;
+      font-size: 1.0625rem; font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      letter-spacing: -0.01em;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+    }
+    .btn-review:hover:not(:disabled) {
+      background: #1d4ed8;
+      box-shadow: 0 6px 18px rgba(37,99,235,0.45);
+      transform: translateY(-1px);
+    }
+    .btn-review:active:not(:disabled) { transform: translateY(0); }
+    .btn-review:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+    /* ── Results ── */
+    .results-card { flex: 1; }
+    .results-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 0.75rem;
+    }
+    .results-actions { display: flex; gap: 0.5rem; }
+    .btn-action {
+      padding: 0.375rem 0.75rem; background: white;
+      border: 1px solid var(--border); border-radius: 0.5rem;
+      font-size: 0.75rem; cursor: pointer;
+      transition: all 0.15s; color: var(--text); font-weight: 500;
+    }
+    .btn-action:hover { border-color: var(--sky-dark); color: var(--sky-dark); background: var(--primary-light); }
+
+    .status-bar {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      padding: 0.625rem 0.875rem; border-radius: 0.5rem;
+      font-size: 0.8rem; margin-bottom: 0.75rem; line-height: 1.5;
+    }
+    .status-bar.info    { background: var(--primary-light); color: #0369a1; border: 1px solid var(--sky); }
+    .status-bar.error   { background: var(--error-light); color: var(--error); border: 1px solid #fecaca; }
+    .status-bar.success { background: var(--success-light); color: var(--success); border: 1px solid #bbf7d0; }
+
+    .results-content {
+      min-height: 600px; border: 1px solid var(--border);
+      border-radius: 0.625rem; padding: 1.5rem;
+      overflow-y: auto; background: #fafafa; position: relative;
+    }
+    .results-placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 400px; text-align: center; gap: 0.875rem;
+    }
+    .placeholder-icon  { font-size: 3.5rem; }
+    .placeholder-title { font-size: 1rem; font-weight: 600; color: var(--text); }
+    .placeholder-desc  { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── Markdown ── */
+    .md-body { line-height: 1.75; color: var(--text); }
+    .md-body h1 { font-size: 1.375rem; font-weight: 800; margin: 1.5rem 0 0.75rem; }
+    .md-body h2 {
+      font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 0.625rem;
+      color: var(--text); padding: 0.5rem 0.75rem;
+      background: var(--primary-light); border-left: 3px solid var(--sky-dark);
+      border-radius: 0 0.375rem 0.375rem 0;
+    }
+    .md-body h3 {
+      font-size: 0.9rem; font-weight: 700;
+      margin: 1.5rem 0 0.625rem;
+      color: #1e293b;
+      padding: 0.35rem 0.625rem;
+      background: #f8fafc;
+      border-left: 3px solid #94a3b8;
+      border-radius: 0 0.375rem 0.375rem 0;
+    }
+    .md-body h4 { font-size: 0.875rem; font-weight: 600; margin: 1rem 0 0.375rem; color: var(--text-muted); }
+    .md-body p  { margin: 0.5rem 0; font-size: 0.8625rem; }
+    .md-body ul, .md-body ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+    .md-body li { font-size: 0.8625rem; margin: 0.3rem 0; }
+    .md-body strong { font-weight: 700; }
+    .md-body em { color: #7c3aed; font-style: normal; font-weight: 600; }
+    .md-body code {
+      background: #f1f5f9; padding: 0.15rem 0.4rem; border-radius: 0.25rem;
+      font-size: 0.8rem; font-family: 'Cascadia Code', monospace; color: #c026d3;
+    }
+    .md-body pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
+    .md-body pre code { background: none; color: inherit; padding: 0; }
+    .md-body hr { border: none; border-top: 2px solid var(--border); margin: 1.25rem 0; }
+    .md-body blockquote {
+      border-left: 4px solid #f59e0b;
+      padding: 0.625rem 1rem;
+      color: #92400e;
+      margin: 1rem 0;
+      background: #fffbeb;
+      border-radius: 0 0.375rem 0.375rem 0;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+    /* ── 이슈 테이블 (각 오류/이슈를 담는 테이블) ── */
+    .md-body table {
+      width: 100%; border-collapse: collapse;
+      margin: 0.5rem 0 1rem; font-size: 0.825rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .md-body th {
+      background: #334155; color: white;
+      padding: 0.5rem 0.875rem; text-align: left;
+      font-weight: 600; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      border: 1px solid #475569;
+    }
+    /* 이슈 테이블: 첫 번째 열(항목 키) */
+    .md-body td:first-child {
+      width: 9rem; font-weight: 700; font-size: 0.78rem;
+      color: var(--text); background: #f8fafc;
+      padding: 0.55rem 0.875rem;
+      border-right: 1px solid var(--border);
+      white-space: nowrap; vertical-align: top;
+    }
+    /* 이슈 테이블: 두 번째 열(내용) */
+    .md-body td:last-child {
+      padding: 0.55rem 0.875rem;
+      vertical-align: top; line-height: 1.6;
+    }
+    .md-body td { border: 1px solid var(--border); }
+    .md-body tr:last-child td { border-bottom: none; }
+    /* 위치 행 강조 */
+    .md-body tr:first-child td { background: var(--primary-light) !important; }
+    .md-body tr:first-child td:first-child { background: var(--sky) !important; opacity: 0.6; }
+
+    /* ── Misc ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.65s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: var(--sky-dark);
+      animation: blink 0.9s step-end infinite;
+      vertical-align: text-bottom; margin-left: 2px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .scroll-top {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      width: 2.5rem; height: 2.5rem;
+      background: var(--primary); color: white;
+      border: none; border-radius: 50%; cursor: pointer;
+      font-size: 1.125rem; display: none;
+      align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+      transition: all 0.15s; z-index: 200;
+    }
+    .scroll-top:hover { background: var(--primary-dark); transform: translateY(-2px); }
+    .scroll-top.visible { display: flex; }
+
+    /* ── Result Popup Modal ── */
+    .result-modal {
+      display: none; position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.52);
+      padding: 1.5rem;
+      align-items: center; justify-content: center;
+    }
+    .result-modal.open { display: flex; }
+    .result-modal-inner {
+      background: white; border-radius: 0.75rem;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+      width: 100%; max-width: 960px;
+      max-height: calc(100vh - 3rem);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .result-modal-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.875rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: #f7f7f7; flex-shrink: 0;
+    }
+    .result-modal-title { flex: 1; font-size: 0.9375rem; font-weight: 700; }
+    .result-modal-body  { flex: 1; overflow-y: auto; padding: 1.75rem 2rem; }
+    .btn-modal-close {
+      background: none; border: 1px solid var(--border); border-radius: 0.375rem;
+      padding: 0.25rem 0.75rem; cursor: pointer; font-size: 0.8125rem;
+      color: var(--text-muted); transition: all 0.15s; font-weight: 500;
+    }
+    .btn-modal-close:hover { border-color: var(--error); color: var(--error); background: var(--error-light); }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-text">
+    <h1>특허 번역 검토기</h1>
+    <p>Patent Translation Review System · Powered by OpenAI</p>
+  </div>
+  <div class="api-badge fail" id="apiBadge">
+    <span class="dot"></span>
+    <span id="apiBadgeText">연결 안됨</span>
+  </div>
+</header>
+
+<!-- ── Alert Banner (config 로드 실패 시) ── -->
+<div class="alert warning" id="alertBanner"></div>
+
+<!-- ── Main ── -->
+<div class="container">
+
+  <!-- LEFT -->
+  <div class="left-panel">
+
+    <!-- File Upload -->
+    <div class="card">
+      <div class="card-title">📁 파일을 업로드해 주세요</div>
+      <div class="file-zones">
+
+        <div class="file-zone" id="zone-ko"
+             ondragover="onDragOver(event,'ko')" ondragleave="onDragLeave(event,'ko')" ondrop="onDrop(event,'ko')">
+          <input type="file" accept=".md,.txt" onchange="onFileSelect(event,'ko')">
+          <div class="zone-badge">🇰🇷</div>
+          <div class="zone-info">
+            <div class="zone-label">국문 특허 명세서</div>
+            <div class="zone-sub">Korean Patent Specification (.md)</div>
+            <div class="zone-filename" id="fname-ko"></div>
+          </div>
+          <button class="zone-clear" onclick="clearFile(event,'ko')">✕</button>
+        </div>
+
+        <div class="file-zone" id="zone-en"
+             ondragover="onDragOver(event,'en')" ondragleave="onDragLeave(event,'en')" ondrop="onDrop(event,'en')">
+          <input type="file" accept=".md,.txt" onchange="onFileSelect(event,'en')">
+          <div class="zone-badge">🇺🇸</div>
+          <div class="zone-info">
+            <div class="zone-label">영문 번역 명세서</div>
+            <div class="zone-sub">English Patent Specification (.md)</div>
+            <div class="zone-filename" id="fname-en"></div>
+          </div>
+          <button class="zone-clear" onclick="clearFile(event,'en')">✕</button>
+        </div>
+
+        <div class="file-zone" id="zone-bi"
+             ondragover="onDragOver(event,'bi')" ondragleave="onDragLeave(event,'bi')" ondrop="onDrop(event,'bi')">
+          <input type="file" accept=".md,.txt" onchange="onFileSelect(event,'bi')">
+          <div class="zone-badge">📋</div>
+          <div class="zone-info">
+            <div class="zone-label">국영문 병렬 명세서</div>
+            <div class="zone-sub">Bilingual Aligned Specification (.md)</div>
+            <div class="zone-filename" id="fname-bi"></div>
+          </div>
+          <button class="zone-clear" onclick="clearFile(event,'bi')">✕</button>
+        </div>
+
+      </div>
+      <div class="token-bar" id="tokenBar">파일을 업로드하면 예상 토큰 수가 표시됩니다.</div>
+      <div class="prompt-badge-row">
+        <span class="prompt-badge" id="promptBadge">⏳ 프롬프트 로딩 중...</span>
+        <button class="btn-prompt-reload" onclick="reloadPromptFile()" title="prompt.txt 재로드" style="display:none">↩</button>
+        <button class="btn-prompt-reload" onclick="pickPromptFile()" title="파일 직접 선택" style="display:none">📂</button>
+        <input type="file" id="promptFilePicker" accept=".txt,.md" style="display:none" onchange="onPromptFilePicked(event)">
+      </div>
+      <textarea id="promptArea" style="display:none"></textarea>
+    </div>
+
+    <!-- Review Button -->
+    <button class="btn-review" id="reviewBtn" onclick="runReview()">
+      🔍 번역 검토 실행
+    </button>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="card results-card">
+      <div class="results-header">
+        <div class="card-title" style="margin-bottom:0">📊 검토 결과</div>
+        <div class="results-actions result-action-bar" id="resultActions" style="display:none">
+          <button class="btn-action btn-dl-word" onclick="downloadWord()">📥 Word</button>
+          <button class="btn-action" onclick="copyMarkdown()">📋 마크다운 복사</button>
+          <button class="btn-action" onclick="copyPlain()">📄 텍스트 복사</button>
+          <button class="btn-action" onclick="openPopup()">🔲 팝업</button>
+        </div>
+      </div>
+      <div id="statusBar" style="display:none"></div>
+      <div class="results-content" id="resultsContent">
+        <div class="results-placeholder">
+          <div class="placeholder-title">번역 검토를 시작하세요</div>
+          <div class="placeholder-desc">
+            파일을 업로드하고<br>
+            <strong>번역 검토 실행</strong> 버튼을 클릭하세요.
+          </div>
+        </div>
+      </div>
+      <div class="result-action-bar" id="resultActionsBottom" style="display:none; margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border); gap:0.5rem; flex-wrap:wrap; justify-content:flex-end;">
+        <button class="btn-action btn-dl-word" onclick="downloadWord()">📥 Word</button>
+        <button class="btn-action" onclick="copyMarkdown()">📋 마크다운 복사</button>
+        <button class="btn-action" onclick="copyPlain()">📄 텍스트 복사</button>
+        <button class="btn-action" onclick="openPopup()">🔲 팝업</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<!-- ── Result Popup Modal ── -->
+<div class="result-modal" id="resultModal" onclick="onModalBgClick(event)">
+  <div class="result-modal-inner">
+    <div class="result-modal-header">
+      <div class="result-modal-title">📊 검토 결과</div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <button class="btn-action btn-dl-word" onclick="downloadWord()">📥 Word</button>
+        <button class="btn-action" onclick="copyMarkdown()">📋 마크다운 복사</button>
+        <button class="btn-action" onclick="copyPlain()">📄 텍스트 복사</button>
+        <button class="btn-modal-close" onclick="closePopup()">✕ 닫기</button>
+      </div>
+    </div>
+    <div class="result-modal-body" id="resultModalBody"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// Config & State
+// ═══════════════════════════════════════════════
+let API_KEY = '';
+let API_MODEL = 'gpt-5.2';
+const contents = { ko: '', en: '', bi: '' };
+let resultMarkdown = '';
+let isStreaming = false;
+
+// ─── config 로드: /api/config(Vercel) → config.txt(로컬) 순으로 시도 ───
+async function loadConfig() {
+  // 1. Vercel 환경변수 (/api/config)
+  try {
+    const res = await fetch('/api/config', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.OPENAI_API_KEY && !data.OPENAI_API_KEY.startsWith('sk-여기에')) {
+        API_KEY = data.OPENAI_API_KEY;
+      }
+      if (data.MODEL) API_MODEL = data.MODEL;
+      if (API_KEY) {
+        setApiBadge(true, `GPT 연결됨 (${API_MODEL})`);
+        return;
+      }
+    }
+  } catch {}
+
+  // 2. 로컬 fallback: config.txt
+  try {
+    const res = await fetch('config.txt', { cache: 'no-store' });
+    if (!res.ok) throw new Error('not found');
+    const text = await res.text();
+    for (const line of text.split('\n')) {
+      const [k, ...v] = line.trim().split('=');
+      const val = v.join('=').trim();
+      if (k === 'OPENAI_API_KEY' && val && !val.startsWith('sk-여기에')) API_KEY = val;
+      if (k === 'MODEL' && val) API_MODEL = val;
+    }
+    if (API_KEY) {
+      setApiBadge(true, `GPT 연결됨 (${API_MODEL})`);
+    } else {
+      setApiBadge(false, '연결 안됨');
+      showAlert('config.txt 에 OPENAI_API_KEY를 입력해 주세요.');
+    }
+  } catch {
+    setApiBadge(false, '연결 안됨');
+    showAlert('⚠ API Key 로드 실패 — Vercel 환경변수 또는 config.txt를 확인해 주세요.');
+  }
+}
+
+function setApiBadge(ok, text) {
+  const el = document.getElementById('apiBadge');
+  el.className = `api-badge ${ok ? 'ok' : 'fail'}`;
+  document.getElementById('apiBadgeText').textContent = text;
+}
+
+function showAlert(msg) {
+  const el = document.getElementById('alertBanner');
+  el.textContent = msg;
+  el.className = 'alert warning visible';
+}
+
+// ─── prompt.txt 로드 ───
+async function reloadPromptFile() {
+  try {
+    const res = await fetch('prompt.txt', { cache: 'no-store' });
+    if (!res.ok) throw new Error();
+    document.getElementById('promptArea').value = await res.text();
+    setPromptBar('loaded', '✓ prompt.txt 로드됨');
+  } catch {
+    setPromptBar('error', '⚠ prompt.txt 자동 로드 실패 — [파일 선택]으로 직접 불러오세요.');
+  }
+}
+
+function setPromptBar(type, msg) {
+  const badge = document.getElementById('promptBadge');
+  badge.className = `prompt-badge ${type === 'loaded' ? 'ok' : type === 'error' ? 'fail' : 'loading'}`;
+  badge.textContent = type === 'loaded' ? `📝 ${msg}` : `⚠ ${msg}`;
+}
+
+function pickPromptFile() { document.getElementById('promptFilePicker').click(); }
+function onPromptFilePicked(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => { document.getElementById('promptArea').value = ev.target.result; setPromptBar('loaded', `✓ ${file.name} 로드됨`); };
+  r.readAsText(file, 'UTF-8');
+}
+
+// ─── 초기화 ───
+loadConfig();
+reloadPromptFile();
+
+// ═══════════════════════════════════════════════
+// File Handling
+// ═══════════════════════════════════════════════
+function onDragOver(e, k) { e.preventDefault(); document.getElementById(`zone-${k}`).classList.add('drag-over'); }
+function onDragLeave(e, k) { document.getElementById(`zone-${k}`).classList.remove('drag-over'); }
+function onDrop(e, k) {
+  e.preventDefault();
+  document.getElementById(`zone-${k}`).classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) loadFile(f, k);
+}
+function onFileSelect(e, k) { const f = e.target.files[0]; if (f) loadFile(f, k); }
+
+function loadFile(file, k) {
+  const r = new FileReader();
+  r.onload = e => {
+    contents[k] = e.target.result;
+    document.getElementById(`fname-${k}`).textContent = `✓ ${file.name}`;
+    document.getElementById(`zone-${k}`).classList.add('loaded');
+    updateTokenBar();
+  };
+  r.readAsText(file, 'UTF-8');
+}
+
+function clearFile(e, k) {
+  e.stopPropagation(); e.preventDefault();
+  contents[k] = '';
+  document.getElementById(`fname-${k}`).textContent = '';
+  const z = document.getElementById(`zone-${k}`);
+  z.classList.remove('loaded');
+  z.querySelector('input[type="file"]').value = '';
+  updateTokenBar();
+}
+
+function updateTokenBar() {
+  const n = Object.values(contents).reduce((s, c) => s + c.length, 0);
+  const bar = document.getElementById('tokenBar');
+  if (!n) { bar.textContent = '파일을 업로드하면 예상 토큰 수가 표시됩니다.'; bar.className = 'token-bar'; return; }
+  const est = Math.ceil(n / 2.5);
+  bar.textContent = `총 ${n.toLocaleString()}자 · 예상 입력 토큰 ~${est.toLocaleString()}`;
+  bar.className = est > 80000 ? 'token-bar warn' : 'token-bar';
+  if (est > 80000) bar.textContent += ' ⚠️ 토큰이 많습니다';
+}
+
+// ═══════════════════════════════════════════════
+// Review
+// ═══════════════════════════════════════════════
+async function runReview() {
+  if (isStreaming) return;
+
+  if (!API_KEY) {
+    showStatus('error', '❌ API Key가 연결되지 않았습니다. config.txt 또는 Vercel 환경변수를 확인해 주세요.');
+    return;
+  }
+  const prompt = document.getElementById('promptArea').value.trim();
+  if (!prompt) { showStatus('error', '❌ 프롬프트가 없습니다. prompt.txt를 확인하거나 [파일 선택]으로 직접 불러오세요.'); return; }
+  if (!Object.values(contents).some(c => c.length)) { showStatus('error', '❌ 최소 하나의 파일을 업로드해 주세요.'); return; }
+
+  let userMsg = '다음 특허 명세서들을 검토해 주세요.\n';
+  if (contents.ko) userMsg += `\n---\n## [INPUT 1] 국문 특허 명세서\n\n${contents.ko}\n`;
+  if (contents.en) userMsg += `\n---\n## [INPUT 2] 영문 번역 명세서\n\n${contents.en}\n`;
+  if (contents.bi) userMsg += `\n---\n## [INPUT 3] 국영문 병렬 명세서\n\n${contents.bi}\n`;
+
+  isStreaming = true;
+  const btn = document.getElementById('reviewBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> AI 검토 중...';
+  document.querySelectorAll('.result-action-bar').forEach(el => el.style.display = 'none');
+  showStatus('info', '⏳ AI가 번역을 분석하고 있습니다. 문서 길이에 따라 1~3분 소요될 수 있습니다...');
+  setResults('<div class="results-placeholder"><div class="placeholder-icon">⏳</div><div class="placeholder-title">분석 중...</div></div>');
+  resultMarkdown = '';
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: prompt },
+          { role: 'user',   content: userMsg }
+        ],
+        max_completion_tokens: 16384,
+        temperature: 0.2,
+        stream: true
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', lastRender = 0;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+        try { resultMarkdown += JSON.parse(raw).choices?.[0]?.delta?.content ?? ''; } catch {}
+      }
+      const now = Date.now();
+      if (now - lastRender > 200) { lastRender = now; renderResult(true); }
+    }
+
+    renderResult(false);
+    document.querySelectorAll('.result-action-bar').forEach(el => el.style.display = 'flex');
+    showStatus('success', '✅ 검토 완료');
+
+  } catch (err) {
+    showStatus('error', `❌ 오류: ${err.message}`);
+    if (!resultMarkdown) setResults(`<div class="results-placeholder"><div class="placeholder-icon">⚠️</div><div class="placeholder-title">오류 발생</div><div class="placeholder-desc">${escHtml(err.message)}</div></div>`);
+    else renderResult(false);
+  } finally {
+    isStreaming = false;
+    btn.disabled = false;
+    btn.innerHTML = '🔍 번역 검토 실행';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// GPT 출력 → Markdown 전처리
+// ═══════════════════════════════════════════════
+function preprocessMd(raw) {
+  let t = raw;
+
+  // ① ===+ Ⅰ/Ⅱ 섹션 헤더  (같은 줄에 있는 경우)
+  t = t.replace(/={5,}\s*((?:[ⅠⅡⅢⅣ])[^\n]+?)(?:\s*={5,})?\s*$/gm, '\n## $1');
+
+  // ② ────+ 다음 줄에 III./IV. 헤더
+  t = t.replace(/─{5,}[─\s]*\n\s*((?:III|IV)[.\s][^\n]+)/g, '\n## $1\n');
+
+  // ③ ────+ 다음 줄에 [위치 표기...] 헤더
+  t = t.replace(/─{5,}[─\s]*\n\s*(\[위치 표기[^\n]+\])/g, '\n### $1\n');
+
+  // ④ 남은 장식선 제거
+  t = t.replace(/^[─=]{5,}[─=\s]*$/gm, '\n---\n');
+
+  // ⑤ [1] [2] 등 소항목 → ### 헤딩
+  t = t.replace(/^\[(\d+)\]\s+(.+)$/gm, '\n### [$1] $2\n');
+
+  // ⑥ ※ 결론 노트 → 인용 블록
+  t = t.replace(/^(※.+)$/gm, '\n> 💡 $1\n');
+
+  // ⑦ 필드 라벨(단독 줄) → 굵게 + 아이콘
+  const LABELS = [
+    '위치', '문제되는 부분\\(원문 인용\\)', '문제 내용',
+    '권리범위 또는 기술적 영향', '해결방법 제안',
+    '누락된 국문 부분\\(인용\\)', '영문 대응 여부', '권리범위 영향',
+    '국문 표현', '영문 표현', '범위 확장\\/축소 여부',
+    '문제되는 영문 표현', '문제되는 영문 문장',
+    '권리범위 변경 가능성', '무효 리스크', '보정 필요성',
+    '종합 위험도', '국문 명세서 완성도 점수', '영문 번역 품질 점수', '종합 점수'
+  ];
+  for (const lbl of LABELS) {
+    t = t.replace(new RegExp(`^(${lbl})$`, 'gm'), '**▸ $1**');
+  }
+
+  // ⑧ 연속 빈 줄 정리
+  t = t.replace(/\n{3,}/g, '\n\n');
+
+  return t;
+}
+
+// ═══════════════════════════════════════════════
+// Render & Utils
+// ═══════════════════════════════════════════════
+function renderResult(cur) {
+  const processed = preprocessMd(resultMarkdown + (cur ? '\u200B' : ''));
+  document.getElementById('resultsContent').innerHTML =
+    `<div class="md-body">${marked.parse(processed)}${cur ? '<span class="cursor"></span>' : ''}</div>`;
+}
+function setResults(html) { document.getElementById('resultsContent').innerHTML = html; }
+function showStatus(type, msg) {
+  const el = document.getElementById('statusBar');
+  el.className = `status-bar ${type}`; el.innerHTML = msg; el.style.display = 'flex';
+}
+function copyMarkdown() {
+  navigator.clipboard.writeText(resultMarkdown).then(() => flash('📋 마크다운 복사', '✅ 복사됨!'));
+}
+function copyPlain() {
+  const el = document.querySelector('.md-body');
+  navigator.clipboard.writeText(el ? el.innerText : resultMarkdown).then(() => flash('📄 텍스트 복사', '✅ 복사됨!'));
+}
+function flash(orig, msg) {
+  document.querySelectorAll('.btn-action').forEach(b => {
+    if (b.textContent === orig) { b.textContent = msg; setTimeout(() => b.textContent = orig, 2000); }
+  });
+}
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+window.addEventListener('scroll', () => {
+  document.getElementById('scrollTop').classList.toggle('visible', window.scrollY > 300);
+});
+
+// ═══════════════════════════════════════════════
+// Popup Modal
+// ═══════════════════════════════════════════════
+function openPopup() {
+  document.getElementById('resultModalBody').innerHTML =
+    document.getElementById('resultsContent').innerHTML;
+  document.getElementById('resultModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closePopup() {
+  document.getElementById('resultModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function onModalBgClick(e) {
+  if (e.target === document.getElementById('resultModal')) closePopup();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
+
+// ═══════════════════════════════════════════════
+// Word Download (HTML → .doc, 외부 라이브러리 불필요)
+// ═══════════════════════════════════════════════
+function downloadWord() {
+  if (!resultMarkdown) return;
+
+  const btns = document.querySelectorAll('.btn-dl-word');
+  btns.forEach(b => { b.disabled = true; b.textContent = '⏳ 생성 중...'; });
+
+  try {
+    const rendered = marked.parse(preprocessMd(resultMarkdown));
+
+    const html = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<!--[if gte mso 9]><xml><w:WordDocument>
+  <w:View>Print</w:View>
+  <w:Zoom>100</w:Zoom>
+</w:WordDocument></xml><![endif]-->
+<style>
+  @page { margin: 2cm; }
+  body { font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif; font-size: 11pt; line-height: 1.6; color: #212121; }
+  h1 { font-size: 18pt; font-weight: bold; margin: 12pt 0 6pt; }
+  h2 { font-size: 14pt; font-weight: bold; color: #1e40af; border-left: 4px solid #0ea5e9; padding-left: 8pt; margin: 14pt 0 6pt; }
+  h3 { font-size: 12pt; font-weight: bold; color: #1e293b; margin: 12pt 0 4pt; }
+  h4 { font-size: 11pt; font-weight: bold; color: #475569; margin: 8pt 0 4pt; }
+  p  { margin: 4pt 0; font-size: 10.5pt; }
+  ul, ol { padding-left: 18pt; margin: 4pt 0; }
+  li { font-size: 10.5pt; margin: 2pt 0; }
+  strong { font-weight: bold; }
+  em { color: #7c3aed; font-style: normal; font-weight: 600; }
+  code { font-family: 'Courier New', monospace; font-size: 9.5pt; color: #c026d3; background: #f1f5f9; }
+  blockquote { margin: 8pt 0 8pt 18pt; padding: 4pt 8pt; border-left: 3px solid #f59e0b; color: #92400e; font-style: italic; }
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 10pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10pt; }
+  th { background: #334155; color: white; font-weight: bold; padding: 5pt 8pt; border: 1px solid #475569; text-align: left; }
+  td { padding: 5pt 8pt; border: 1px solid #d1d5db; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+</style>
+</head>
+<body>
+<h1>특허 번역 검토 결과</h1>
+<p style="color:#6e6e6e;font-size:9.5pt">생성일: ${new Date().toLocaleString('ko-KR')}</p>
+<hr>
+${rendered}
+</body>
+</html>`;
+
+    const blob = new Blob(['\ufeff' + html], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `번역검토결과_${new Date().toISOString().slice(0, 10)}.doc`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    btns.forEach(b => { b.disabled = false; b.textContent = '✅ 다운로드됨'; });
+    setTimeout(() => btns.forEach(b => { b.textContent = '📥 Word'; }), 2000);
+
+  } catch (e) {
+    console.error(e);
+    btns.forEach(b => { b.disabled = false; b.textContent = '📥 Word'; });
+    alert('Word 파일 생성 실패: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>
