@@ -551,6 +551,27 @@
       font-style: italic;
       pointer-events: none;
     }
+
+    /* ── Lightbox ── */
+    #imgLightbox {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.88); z-index: 9999;
+      align-items: center; justify-content: center; cursor: zoom-out;
+    }
+    #imgLightbox.open { display: flex; }
+    #imgLightbox img {
+      max-width: 90vw; max-height: 90vh;
+      object-fit: contain; border-radius: 0.25rem;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      cursor: default; transition: transform 0.25s;
+    }
+    #lbClose {
+      position: fixed; top: 1rem; right: 1.25rem;
+      color: white; font-size: 2rem; line-height: 1;
+      background: none; border: none; cursor: pointer;
+      opacity: 0.75; transition: opacity 0.15s;
+    }
+    #lbClose:hover { opacity: 1; }
   </style>
 </head>
 <body>
@@ -772,6 +793,12 @@
 
   </div>
 </div><!-- /tab-drawing -->
+
+<!-- ── Lightbox ── -->
+<div id="imgLightbox" onclick="closeLightbox(event)">
+  <button id="lbClose" onclick="closeLightbox()">✕</button>
+  <img id="lbImg" src="" alt="" onclick="event.stopPropagation()">
+</div>
 
 <button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
@@ -1063,6 +1090,22 @@ window.addEventListener('scroll', () => {
   document.getElementById('scrollTop').classList.toggle('visible', window.scrollY > 300);
 });
 
+// ── Lightbox ──
+function openLightbox(img) {
+  const rot = parseInt(img.dataset.rot || '0');
+  const lbImg = document.getElementById('lbImg');
+  lbImg.src = img.src;
+  lbImg.style.transform = rot ? `rotate(${rot}deg)` : '';
+  document.getElementById('imgLightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox(e) {
+  if (e && e.target.id === 'lbImg') return;
+  document.getElementById('imgLightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
 // ═══════════════════════════════════════════════
 // Drawing Translation Tab
 // ═══════════════════════════════════════════════
@@ -1269,7 +1312,8 @@ function createFigurePlaceholder(pageNum, imgB64) {
     <div class="drawing-figure-body">
       <div class="drawing-figure-img">
         <div class="figure-img-wrapper">
-          <img src="data:image/jpeg;base64,${imgB64}" alt="페이지 ${pageNum}" data-rot="0">
+          <img src="data:image/jpeg;base64,${imgB64}" alt="페이지 ${pageNum}" data-rot="0"
+               onclick="openLightbox(this)" title="클릭하면 크게 보기" style="cursor:zoom-in">
           <div class="rotate-btns">
             <button class="rotate-btn" onclick="rotateImg(this,-1)" title="반시계 90° 회전">↺</button>
             <button class="rotate-btn" onclick="rotateImg(this,1)"  title="시계 90° 회전">↻</button>
