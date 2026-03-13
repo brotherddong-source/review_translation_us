@@ -2524,13 +2524,14 @@ function parseReviewItems(markdown) {
 }
 
 // 지적항목 1건 → API 호출 → {line, original, revised, reason} 또는 null
-async function callItemRevision(item, numberedSpec) {
+async function callItemRevision(item, numberedSpec, itemNo) {
   const sysPrompt = `특허 번역 교정 전문가입니다.
-아래 [지적사항] 1건에 해당하는 문장을 [영문 명세서]에서 찾아 수정안을 JSON으로 반환하세요.
+아래 [지적사항 ${itemNo}번]에 해당하는 문장을 [영문 명세서]에서 찾아 수정안을 JSON으로 반환하세요.
+지적사항에 인용된 원문 텍스트(따옴표 안 내용)를 명세서에서 정확히 찾으세요.
 해당 문장을 찾을 수 없거나 수정이 불필요하면 {"skip":true}를 반환하세요.
 수정안은 원문 내용을 빠짐없이 유지하고 지적된 부분만 고치세요.
 코드블록 없이 JSON 객체만 출력하세요.
-출력: {"line":줄번호(숫자),"original":"원문","revised":"수정문","reason":"수정근거(한국어)"}`;
+출력: {"line":줄번호(숫자),"original":"원문 전체","revised":"수정문","reason":"수정근거(한국어)"}`;
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -2540,7 +2541,7 @@ async function callItemRevision(item, numberedSpec) {
         model: API_MODEL,
         messages: [
           { role: 'system', content: sysPrompt },
-          { role: 'user', content: `[지적사항]\n${item.section} — ${item.text}\n\n[영문 명세서]\n${numberedSpec}` }
+          { role: 'user', content: `[지적사항 ${itemNo}번 / ${item.section}]\n${item.text}\n\n[영문 명세서]\n${numberedSpec}` }
         ],
         max_completion_tokens: 1024,
         temperature: 0
@@ -2601,7 +2602,7 @@ async function runSpecCompare() {
   let done = 0;
   for (let i = 0; i < total; i += CONCURRENCY) {
     const batch = reviewItems.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map(item => callItemRevision(item, numberedSpec)));
+    const results = await Promise.all(batch.map((item, j) => callItemRevision(item, numberedSpec, i + j + 1)));
     results.forEach(r => { if (r) specRevisions.push(r); });
     done += batch.length;
     showProgress(done, specRevisions.length);
@@ -2677,7 +2678,7 @@ function renderSpecTable(items) {
     const reasonText = catMatch ? item.reason.replace(catMatch[1], '').trim() : (item.reason || '');
     const { origHtml, revHtml } = wordDiff(item.original || '', item.revised || '');
     return `<tr data-idx="${idx}">
-      <td class="td-ln">${item.line}</td>
+      <td class="td-ln">${idx + 1}<br><span style="color:#cbd5e1;font-size:0.62rem">L.${item.line}</span></td>
       <td class="td-orig">${origHtml}</td>
       <td class="td-rev" contenteditable="true" data-idx="${idx}">${revHtml}</td>
       <td class="td-why">${catLabel}${escHtml(reasonText)}</td>
