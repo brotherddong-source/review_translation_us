@@ -838,7 +838,11 @@
       </button>
       <button class="btn-review" id="dlReviewSideBtn" onclick="downloadReviewDocx(this)"
         style="display:none;flex-shrink:0;width:auto;padding:1.125rem 1rem;background:#334155;box-shadow:0 4px 14px rgba(51,65,85,0.35)">
-        📥 다운로드
+        📥 DOCX
+      </button>
+      <button class="btn-review" id="dlReviewMdSideBtn" onclick="autoDownloadReview()"
+        style="display:none;flex-shrink:0;width:auto;padding:1.125rem 1rem;background:#0f766e;box-shadow:0 4px 14px rgba(15,118,110,0.35)">
+        📄 MD
       </button>
     </div>
     <button class="btn-review" id="goToDrawingBtn" onclick="switchTab('drawing')" style="display:none;margin-top:0.5rem;background:#16a34a;box-shadow:0 4px 14px rgba(22,163,74,0.35)">
@@ -856,6 +860,7 @@
           <button class="btn-action" onclick="copyMarkdown()">📋 마크다운 복사</button>
           <button class="btn-action" onclick="copyPlain()">📄 텍스트 복사</button>
           <button class="btn-action" id="dlDocxBtn" onclick="downloadReviewDocx()">📥 DOCX 다운로드</button>
+          <button class="btn-action" onclick="autoDownloadReview()">📄 MD 다운로드</button>
         </div>
       </div>
       <!-- 결과 탭 (검토 완료 후 표시) -->
@@ -1262,6 +1267,7 @@ async function runReview() {
   btn.innerHTML = '🔍 번역 검토 실행';
   document.getElementById('goToDrawingBtn').style.display = 'none';
   document.getElementById('dlReviewSideBtn').style.display = 'none';
+  document.getElementById('dlReviewMdSideBtn').style.display = 'none';
   resultMarkdown = '';
   setResults('<div class="results-placeholder"><div class="placeholder-icon">⏳</div><div class="placeholder-title">섹션별 전수 검사 시작...</div></div>');
   document.getElementById('resultActions').style.display = 'none';
@@ -1288,6 +1294,7 @@ async function runReview() {
     showStatus('success', `✅ 전수 검사 완료 — ${REVIEW_SECTIONS.length}개 섹션 독립 검토`);
     btn.innerHTML = '✅ 검토 완료';
     document.getElementById('dlReviewSideBtn').style.display = 'block';
+    document.getElementById('dlReviewMdSideBtn').style.display = 'block';
     document.getElementById('goToDrawingBtn').style.display = 'block';
     autoDownloadReview();
     if (contents.en) {
@@ -1374,13 +1381,13 @@ function copyPlain() {
 }
 function autoDownloadReview() {
   if (!resultMarkdown) return;
-  const baseName = (document.getElementById('fname-en').textContent || '번역검토')
+  const baseName = (document.getElementById('fname-en').textContent || '번역검수')
     .replace(/^✓\s*/, '').replace(/\.[^.]+$/, '');
   const blob = new Blob([resultMarkdown], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${baseName}_검토결과.md`;
+  a.download = `${baseName}_검수결과.md`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1513,7 +1520,9 @@ async function downloadReviewDocx(callerBtn) {
     const blob = await Packer.toBlob(doc);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = '번역_검토_결과.docx'; a.click();
+    const docBaseName = (document.getElementById('fname-en').textContent || '번역검수')
+      .replace(/^✓\s*/, '').replace(/\.[^.]+$/, '');
+    a.href = url; a.download = `${docBaseName}_검수결과.docx`; a.click();
     URL.revokeObjectURL(url);
 
   } catch (err) {
@@ -2727,7 +2736,7 @@ function downloadRevisedSpec() {
   a.href = url;
   const baseName = (document.getElementById('fname-en').textContent || '영문명세서')
     .replace(/^✓\s*/, '').replace(/\.[^.]+$/, '');
-  a.download = `${baseName}_수정본.txt`;
+  a.download = `${baseName}_수정본.md`;
   a.click();
   URL.revokeObjectURL(url);
 }
