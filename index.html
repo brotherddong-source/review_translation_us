@@ -2467,43 +2467,51 @@ function onSpecDropZoneDrop(e) {
 
 // Ⅱ파트 검토 결과 추출
 // Ⅱ파트 검토결과를 개별 지적항목 배열로 파싱
+// 실제 resultMarkdown 포맷:
+//   ==============================
+//   Ⅱ[1] 번역 누락
+//   ==============================
+//   ...번호 항목들...
 // 반환: [{section, text}, ...] — 수정불필요/양호 항목 제외
 function parseReviewItems(markdown) {
-  // Ⅱ파트 추출
-  const m = markdown.match(/Ⅱ[.\s].[\s\S]*?(?=\n(?:Ⅲ|##\s*Ⅲ)|$)/);
-  const part2 = m ? m[0].trim() : markdown;
-
-  const lines = part2.split('\n');
-  const items = [];
-  let currentSection = 'Ⅱ';
-  let buf = [];
-
-  const flush = () => {
-    const text = buf.join('\n').trim();
-    if (text) items.push({ section: currentSection, text });
-    buf = [];
-  };
-
-  for (const line of lines) {
-    // 소항목 헤더 감지: ### [1] ... / **[2]** / [3] 등
-    if (/\[\d\]/.test(line) && (/^#+\s/.test(line) || /^\*{1,2}\[/.test(line) || /^-\s*\*{1,2}\[/.test(line))) {
-      flush();
-      currentSection = line.replace(/^[#*\-\s]+/, '').replace(/\*+/g, '').trim();
-      continue;
-    }
-    // 번호 항목 시작: "1." "2)" 등
-    if (/^\s*\d+[.)]\s+\S/.test(line)) {
-      flush();
-      buf = [line];
-    } else if (buf.length > 0) {
-      buf.push(line);
-    }
-  }
-  flush();
-
-  // 수정불필요·양호·문제없음 항목 필터링
   const skipRe = /수정\s*불필요|양호|문제\s*없음|이상\s*없음|해당\s*(사항\s*)?없음|N\/A/i;
-  return items.filter(item => !skipRe.test(item.text));
+  const items = [];
+
+  // ====...==== 구분자로 섹션 분리
+  const sectionRe = /={6,}\n(.+?)\n={6,}\n([\s\S]*?)(?=\n={6,}|$)/g;
+  let match;
+  while ((match = sectionRe.exec(markdown)) !== null) {
+    const label = match[1].trim();
+    const content = match[2].trim();
+
+    // Ⅱ파트 섹션만 대상
+    if (!label.includes('Ⅱ')) continue;
+
+    // 섹션 전체가 수정불필요면 건너뜀
+    if (skipRe.test(content) && content.length < 50) continue;
+
+    // 번호 항목(1. 2. 3.) 또는 불릿(- **) 파싱
+    const lines = content.split('\n');
+    let buf = [];
+
+    const flush = () => {
+      const text = buf.join('\n').trim();
+      if (text && !skipRe.test(text)) items.push({ section: label, text });
+      buf = [];
+    };
+
+    for (const line of lines) {
+      if (/^\s*\d+[.)]\s+\S/.test(line) || /^\s*-\s+\*{1,2}\S/.test(line)) {
+        flush();
+        buf = [line];
+      } else if (buf.length > 0) {
+        buf.push(line);
+      }
+    }
+    flush();
+  }
+
+  return items;
 }
 
 // 지적항목 1건 → API 호출 → {line, original, revised, reason} 또는 null
