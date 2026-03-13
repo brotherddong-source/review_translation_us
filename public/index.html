@@ -747,6 +747,44 @@
     .container.spec-mode { grid-template-columns: 240px 1fr; }
     .container.spec-mode .left-panel .file-section:not(.always-show) { display: none; }
     .container.spec-mode .left-panel { position: sticky; top: 65px; }
+    /* 수정대상 오버레이 */
+    .targets-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 1000; display: flex; align-items: center; justify-content: center;
+    }
+    .targets-modal {
+      background: white; border-radius: 0.75rem; width: min(680px, 95vw);
+      max-height: 80vh; display: flex; flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .targets-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
+      font-weight: 700; font-size: 0.9rem;
+    }
+    .targets-modal-body { overflow-y: auto; padding: 0.5rem 0; }
+    .target-item {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      padding: 0.45rem 1rem; border-bottom: 1px solid #f1f5f9;
+      font-size: 0.78rem; line-height: 1.5;
+    }
+    .target-item:hover { background: #f8fafc; }
+    .target-num {
+      flex-shrink: 0; font-weight: 800; font-size: 0.68rem;
+      background: #fef3c7; color: #92400e;
+      padding: 0.1rem 0.35rem; border-radius: 0.25rem; margin-top: 0.1rem;
+    }
+    .target-sec {
+      flex-shrink: 0; font-size: 0.65rem; font-weight: 700;
+      background: #dbeafe; color: #1e40af;
+      padding: 0.1rem 0.3rem; border-radius: 0.25rem; margin-top: 0.1rem;
+    }
+    .target-text { color: var(--text); flex: 1; }
+    /* 검토결과 본문에서 수정대상 번호 강조 */
+    .md-body strong[data-revision-target] {
+      background: #fef3c7; color: #92400e;
+      padding: 0.1rem 0.35rem; border-radius: 0.25rem;
+    }
     /* 인라인 단어 diff 하이라이트 */
     mark.diff-del {
       background: #fee2e2; color: #991b1b;
@@ -892,6 +930,10 @@
       <div class="result-tabs" id="resultTabsNav">
         <button class="result-tab-btn active" id="rtab-review" onclick="switchResultTab('review')">📊 검토 결과</button>
         <button class="result-tab-btn" id="rtab-spec" onclick="switchResultTab('spec')">✏️ AI 명세서 수정</button>
+        <button class="result-tab-btn" id="rtab-targets" onclick="showRevisionTargets()"
+          style="display:none;margin-left:auto;font-size:0.7rem;background:#fef9c3;color:#92400e;border-color:#fde68a">
+          📋 수정대상 <span id="targetCount">0</span>건
+        </button>
       </div>
       <div id="statusBar" style="display:none"></div>
       <div class="results-content" id="resultsContent">
@@ -1322,6 +1364,7 @@ async function runReview() {
     document.getElementById('dlReviewMdSideBtn').style.display = 'block';
     document.getElementById('goToDrawingBtn').style.display = 'block';
     autoDownloadReview();
+    updateTargetBtn();
     if (contents.en) {
       document.getElementById('specReviewFname').textContent = '✓ 검토 결과 자동 로드됨';
       document.getElementById('specReviewFname').style.color = 'var(--success)';
@@ -2515,6 +2558,9 @@ function loadSpecReviewFile(file) {
     resultMarkdown = ev.target.result;
     document.getElementById('specReviewFname').textContent = '✓ ' + file.name;
     document.getElementById('specReviewFname').style.color = 'var(--success)';
+    renderResult(false);  // 검토결과 탭에 번호 포함 렌더링
+    document.getElementById('resultActions').style.display = 'flex';
+    updateTargetBtn();
     // 영문 명세서가 이미 로드돼 있으면 자동 실행
     if (contents.en) runSpecCompare();
   };
@@ -2881,6 +2927,44 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
     cell.closest('tr').classList.add('row-edited');
     if (specRevisions[idx]) specRevisions[idx].revised = cell.textContent;
   });
+}
+
+function updateTargetBtn() {
+  const items = parseReviewItems(resultMarkdown);
+  const btn = document.getElementById('rtab-targets');
+  const cnt = document.getElementById('targetCount');
+  if (btn) { btn.style.display = items.length ? '' : 'none'; }
+  if (cnt) cnt.textContent = items.length;
+}
+
+function showRevisionTargets() {
+  const items = parseReviewItems(resultMarkdown);
+  if (!items.length) return;
+  const rows = items.map((item, i) => {
+    const sec = (item.section || '').replace(/={3,}/g, '').trim();
+    const secLabel = sec.match(/Ⅱ\[\d+\][^\s]*/)?.[0] || sec.slice(0, 10);
+    const loc  = item.location ? `<span style="color:#64748b;font-size:0.7rem"> · ${escHtml(item.location)}</span>` : '';
+    const orig = item.origText ? `<div style="color:#78350f;font-size:0.72rem;margin-top:0.15rem">${escHtml(item.origText.slice(0, 120))}${item.origText.length > 120 ? '…' : ''}</div>` : '';
+    return `<div class="target-item">
+      <span class="target-num">#${i + 1}</span>
+      <span class="target-sec">${escHtml(secLabel)}</span>
+      <div class="target-text">${escHtml(item.suggestion || item.problem || '').slice(0, 150)}${loc}${orig}</div>
+    </div>`;
+  }).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'targets-overlay';
+  overlay.innerHTML = `
+    <div class="targets-modal">
+      <div class="targets-modal-header">
+        📋 수정 대상 항목 — 총 ${items.length}건
+        <button onclick="this.closest('.targets-overlay').remove()"
+          style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#94a3b8">✕</button>
+      </div>
+      <div class="targets-modal-body">${rows}</div>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 function toggleSpecTable() {
