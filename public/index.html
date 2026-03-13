@@ -2433,59 +2433,56 @@ function onSpecReviewFileLoad(e) {
 }
 
 // Ⅱ파트 검토 결과 추출
-function extractPart2(markdown) {
+// Ⅱ파트 검토결과를 개별 지적항목 배열로 파싱
+// 반환: [{section, text}, ...] — 수정불필요/양호 항목 제외
+function parseReviewItems(markdown) {
+  // Ⅱ파트 추출
   const m = markdown.match(/Ⅱ[.\s].[\s\S]*?(?=\n(?:Ⅲ|##\s*Ⅲ)|$)/);
-  return m ? m[0].trim() : markdown; // Ⅱ파트 없으면 전체 사용
+  const part2 = m ? m[0].trim() : markdown;
+
+  const lines = part2.split('\n');
+  const items = [];
+  let currentSection = 'Ⅱ';
+  let buf = [];
+
+  const flush = () => {
+    const text = buf.join('\n').trim();
+    if (text) items.push({ section: currentSection, text });
+    buf = [];
+  };
+
+  for (const line of lines) {
+    // 소항목 헤더 감지: ### [1] ... / **[2]** / [3] 등
+    if (/\[\d\]/.test(line) && (/^#+\s/.test(line) || /^\*{1,2}\[/.test(line) || /^-\s*\*{1,2}\[/.test(line))) {
+      flush();
+      currentSection = line.replace(/^[#*\-\s]+/, '').replace(/\*+/g, '').trim();
+      continue;
+    }
+    // 번호 항목 시작: "1." "2)" 등
+    if (/^\s*\d+[.)]\s+\S/.test(line)) {
+      flush();
+      buf = [line];
+    } else if (buf.length > 0) {
+      buf.push(line);
+    }
+  }
+  flush();
+
+  // 수정불필요·양호·문제없음 항목 필터링
+  const skipRe = /수정\s*불필요|양호|문제\s*없음|이상\s*없음|해당\s*(사항\s*)?없음|N\/A/i;
+  return items.filter(item => !skipRe.test(item.text));
 }
 
-async function runSpecCompare() {
-  if (specCompareRunning) return;
-  const enText = contents.en || '';
-  if (!enText) {
-    alert('영문 명세서가 로드되어 있지 않습니다.\n먼저 "영문 번역 명세서" 파일을 업로드해 주세요.'); return;
-  }
-  if (!resultMarkdown) {
-    alert('먼저 번역 검토를 실행해 주세요.'); return;
-  }
-  specCompareRunning = true;
-  const btn = document.getElementById('genSpecBtn');
-  btn.disabled = true; btn.textContent = '⏳ 생성 중...';
-  document.getElementById('specCompareContent').innerHTML =
-    '<div class="status-bar info">⏳ Ⅱ파트 지적사항을 분석하고 수정안을 생성하고 있습니다... (약 30~60초 소요)</div>';
+// 지적항목 1건 → API 호출 → {line, original, revised, reason} 또는 null
+async function callItemRevision(item, numberedSpec) {
+  const sysPrompt = `특허 번역 교정 전문가입니다.
+아래 [지적사항] 1건에 해당하는 문장을 [영문 명세서]에서 찾아 수정안을 JSON으로 반환하세요.
+해당 문장을 찾을 수 없거나 수정이 불필요하면 {"skip":true}를 반환하세요.
+수정안은 원문 내용을 빠짐없이 유지하고 지적된 부분만 고치세요.
+코드블록 없이 JSON 객체만 출력하세요.
+출력: {"line":줄번호(숫자),"original":"원문","revised":"수정문","reason":"수정근거(한국어)"}`;
 
   try {
-    const part2 = extractPart2(resultMarkdown);
-    const enLines = enText.split('\n');
-    const numberedSpec = enLines.map((l, i) => `[${i + 1}] ${l}`).join('\n');
-
-    const sysPrompt = `당신은 특허 번역 교정 전문가입니다.
-아래 영문 번역 명세서(줄번호 포함)와 검토 결과(Ⅱ파트: 번역 품질 분석)를 바탕으로,
-수정이 필요한 모든 줄을 찾아 수정안과 수정근거를 JSON으로 출력하세요.
-
-작업 절차:
-1. 검토 결과 Ⅱ파트의 [1]~[4] 각 소항목을 처음부터 끝까지 순서대로 읽으세요.
-2. 각 지적사항에서 언급된 원문 텍스트(인용구, 문장, 표현)를 영문 명세서에서 찾으세요.
-3. "수정불필요", "양호", "문제없음", "해당사항 없음" 등으로 명시된 항목은 제외하세요.
-4. 그 외 모든 지적사항은 빠짐없이 수정안을 생성하세요. 누락하지 마세요.
-
-규칙:
-- 수정안(revised)은 원문 줄의 내용을 빠짐없이 포함해야 합니다. 지적된 문제만 고치고 나머지는 원문 그대로 유지하세요. 내용을 압축하거나 생략하지 마세요.
-- 수정근거(reason)는 해당 검토 내용을 직접 인용하거나 요약해 한국어로 작성하세요. 어떤 카테고리(Ⅱ[1]~Ⅱ[4])인지 앞에 표시하세요.
-- 줄 번호(line)는 [숫자] 형식의 번호를 사용하세요.
-- 코드블록 없이 JSON 배열만 출력하세요.
-
-출력 형식:
-[
-  {
-    "line": 줄번호(숫자),
-    "original": "원문 그대로",
-    "revised": "수정된 영문",
-    "reason": "Ⅱ[카테고리] 수정근거"
-  }
-]`;
-
-    const userMsg = `[영문 번역 명세서 (줄번호 포함)]\n${numberedSpec}\n\n---\n\n[검토 결과 Ⅱ파트]\n${part2}`;
-
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
@@ -2493,32 +2490,79 @@ async function runSpecCompare() {
         model: API_MODEL,
         messages: [
           { role: 'system', content: sysPrompt },
-          { role: 'user',   content: userMsg }
+          { role: 'user', content: `[지적사항]\n${item.section} — ${item.text}\n\n[영문 명세서]\n${numberedSpec}` }
         ],
-        max_completion_tokens: 16384,
+        max_completion_tokens: 1024,
         temperature: 0
       })
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
-    }
+    if (!res.ok) return null;
     const data = await res.json();
     let raw = data.choices[0].message.content.trim()
       .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
-    const items = JSON.parse(raw);
-    if (!Array.isArray(items)) throw new Error('응답이 JSON 배열 형식이 아닙니다.');
-    specRevisions = items;
-    renderSpecTable(items);
-    btn.textContent = '🔄 재생성';
-  } catch (err) {
+    const parsed = JSON.parse(raw);
+    return parsed.skip ? null : parsed;
+  } catch { return null; }
+}
+
+async function runSpecCompare() {
+  if (specCompareRunning) return;
+  const enText = contents.en || '';
+  if (!enText) { alert('영문 명세서가 로드되어 있지 않습니다.'); return; }
+  if (!resultMarkdown) { alert('먼저 번역 검토를 실행하거나 검토결과 파일을 업로드해 주세요.'); return; }
+
+  specCompareRunning = true;
+  specRevisions = [];
+  const btn = document.getElementById('genSpecBtn');
+  btn.disabled = true; btn.textContent = '⏳ 분석 중...';
+
+  const reviewItems = parseReviewItems(resultMarkdown);
+  const total = reviewItems.length;
+
+  if (total === 0) {
     document.getElementById('specCompareContent').innerHTML =
-      `<div class="status-bar error">❌ 오류: ${escHtml(err.message)}</div>`;
-    btn.textContent = '✨ 수정본 생성';
-  } finally {
-    specCompareRunning = false;
-    btn.disabled = false;
+      '<div class="status-bar ok">✅ Ⅱ파트에서 수정 대상 항목을 찾지 못했습니다.</div>';
+    specCompareRunning = false; btn.disabled = false; btn.textContent = '🔄 재생성';
+    return;
   }
+
+  const enLines = enText.split('\n');
+  const numberedSpec = enLines.map((l, i) => `[${i + 1}] ${l}`).join('\n');
+
+  // 진행 상황 표시
+  const showProgress = (done, found) => {
+    const pct = Math.round(done / total * 100);
+    document.getElementById('specCompareContent').innerHTML = `
+      <div style="padding:1rem 0.5rem">
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem">
+          ⏳ <strong>${done} / ${total}</strong> 항목 처리 중 · 수정 대상 <strong style="color:var(--primary)">${found}건</strong> 발견
+        </div>
+        <div style="background:#e2e8f0;border-radius:0.5rem;height:10px;overflow:hidden">
+          <div style="background:var(--primary);width:${pct}%;height:100%;border-radius:0.5rem;transition:width 0.4s ease"></div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.4rem">${pct}% 완료</div>
+      </div>`;
+  };
+
+  showProgress(0, 0);
+
+  // 5개씩 병렬 처리
+  const CONCURRENCY = 5;
+  let done = 0;
+  for (let i = 0; i < total; i += CONCURRENCY) {
+    const batch = reviewItems.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(item => callItemRevision(item, numberedSpec)));
+    results.forEach(r => { if (r) specRevisions.push(r); });
+    done += batch.length;
+    showProgress(done, specRevisions.length);
+  }
+
+  // 줄 번호 순 정렬 후 렌더
+  specRevisions.sort((a, b) => (a.line || 0) - (b.line || 0));
+  renderSpecTable(specRevisions);
+  btn.textContent = '🔄 재생성';
+  specCompareRunning = false;
+  btn.disabled = false;
 }
 
 // 단어 단위 diff → { origHtml, revHtml }
