@@ -2648,15 +2648,19 @@ async function runSpecCompare() {
   // 진행 상황 표시
   const showProgress = (done, found, failed = 0) => {
     const pct = Math.round(done / total * 100);
+    const skipped = done - found - failed;
     document.getElementById('specCompareContent').innerHTML = `
       <div style="padding:1rem 0.5rem">
         <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem">
-          ⏳ <strong>${done} / ${total}</strong> 항목 처리 중 · 수정 대상 <strong style="color:var(--primary)">${found}건</strong> 발견
+          ⏳ API 전달 <strong>${done} / ${total}</strong>건
+          &nbsp;→&nbsp; 수정 <strong style="color:var(--primary)">${found}</strong>
+          ${skipped > 0 ? ` · 해당없음 <strong style="color:#64748b">${skipped}</strong>` : ''}
+          ${failed  > 0 ? ` · <span style="color:#ef4444">실패 <strong>${failed}</strong></span>` : ''}
         </div>
         <div style="background:#e2e8f0;border-radius:0.5rem;height:10px;overflow:hidden">
           <div style="background:var(--primary);width:${pct}%;height:100%;border-radius:0.5rem;transition:width 0.4s ease"></div>
         </div>
-        <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.4rem">${pct}% 완료${failed > 0 ? ` · <span style="color:#ef4444">${failed}건 매칭 실패</span>` : ''}</div>
+        <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.4rem">${pct}% 완료</div>
       </div>`;
   };
 
@@ -2739,15 +2743,18 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
     items.map(r => r.line).filter((l, i, arr) => arr.indexOf(l) !== i)
   );
   const skipCount = totalItems - count - failCount;
-  let badge = count
-    ? `<span class="spec-badge changes">⚠ ${count}건 수정</span>`
-    : `<span class="spec-badge ok">✅ 수정사항 없음</span>`;
-  if (skipCount > 0) badge += ` <span class="spec-badge" style="background:#f1f5f9;color:#64748b">${skipCount}건 해당없음</span>`;
-  if (failCount > 0) badge += ` <span class="spec-badge" style="background:#fef2f2;color:#dc2626">${failCount}건 매칭실패</span>`;
+  // 총 전달 → 수정 / 해당없음 / 실패 요약
+  const summary = `<span style="font-size:0.8rem;color:var(--text-muted)">API 전달 <strong>${totalItems}</strong>건 → </span>`
+    + (count    ? `<span class="spec-badge changes">수정 ${count}건</span>` : `<span class="spec-badge ok">수정 0건</span>`)
+    + (skipCount > 0 ? ` <span class="spec-badge" style="background:#f1f5f9;color:#64748b">해당없음 ${skipCount}건</span>` : '')
+    + (failCount > 0 ? ` <span class="spec-badge" style="background:#fef2f2;color:#dc2626">실패 ${failCount}건</span>` : '');
+  const badge = summary;
 
   if (count === 0) {
     document.getElementById('specCompareContent').innerHTML =
-      `<div class="status-bar ok">✅ Ⅱ파트 수정 대상이 없습니다.</div>`;
+      `<div class="status-bar ok" style="display:flex;align-items:center;gap:0.5rem">
+        ✅ Ⅱ파트 수정 대상이 없습니다. &nbsp; ${badge}
+      </div>`;
     return;
   }
 
