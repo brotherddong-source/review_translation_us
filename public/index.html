@@ -2929,8 +2929,47 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
   });
 }
 
+// addItemNumbers 출력에서 [#N] 마커 + 테이블을 파싱해 번호-아이템 매핑 반환
+function extractNumberedTargets(md) {
+  const numbered = addItemNumbers(md);
+  const lines = numbered.split('\n');
+  const items = [];
+  let curNum = null, tableBuf = [], curSec = '';
+
+  const flushTable = () => {
+    if (curNum === null || tableBuf.length < 2) return;
+    // 테이블에서 key 필드 추출
+    const rows = tableBuf.filter(l => !/^\|\s*[-:]+[\s|:-]*\|?\s*$/.test(l.trim()));
+    let origText = '', suggestion = '', location = '';
+    for (let r = 1; r < rows.length; r++) {
+      const cells = rows[r].split('|').map(c => c.trim()).filter(c => c);
+      if (cells.length < 2) continue;
+      const key = cells[0], val = cells.slice(1).join(' | ').replace(/<br\s*\/?>/gi, ' ').trim();
+      if (/위치|📍/.test(key))                                    location  = val;
+      else if (/원문 인용|📄|누락된 국문|국문 표현|문제 영문/.test(key)) origText  = val;
+      else if (/수정 제안|✅/.test(key))                           suggestion = val;
+    }
+    items.push({ num: curNum, section: curSec, origText, suggestion, location });
+    tableBuf = []; curNum = null;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/={6,}/.test(line.trim())) { flushTable(); continue; }
+    if (/Ⅱ\[\d+\]/.test(line) && !line.trim().startsWith('|')) curSec = line.trim();
+    const numMatch = line.match(/^\*\*\[#(\d+)\]\*\*$/);
+    if (numMatch) { flushTable(); curNum = parseInt(numMatch[1]); continue; }
+    if (curNum !== null) {
+      if (line.trim().startsWith('|')) { tableBuf.push(line); }
+      else if (tableBuf.length > 0)   { flushTable(); }
+    }
+  }
+  flushTable();
+  return items;
+}
+
 function updateTargetBtn() {
-  const items = parseReviewItems(resultMarkdown);
+  const items = extractNumberedTargets(resultMarkdown);
   const btn = document.getElementById('rtab-targets');
   const cnt = document.getElementById('targetCount');
   if (btn) { btn.style.display = items.length ? '' : 'none'; }
@@ -2938,17 +2977,16 @@ function updateTargetBtn() {
 }
 
 function showRevisionTargets() {
-  const items = parseReviewItems(resultMarkdown);
+  const items = extractNumberedTargets(resultMarkdown);
   if (!items.length) return;
-  const rows = items.map((item, i) => {
-    const sec = (item.section || '').replace(/={3,}/g, '').trim();
-    const secLabel = sec.match(/Ⅱ\[\d+\][^\s]*/)?.[0] || sec.slice(0, 10);
-    const loc  = item.location ? `<span style="color:#64748b;font-size:0.7rem"> · ${escHtml(item.location)}</span>` : '';
-    const orig = item.origText ? `<div style="color:#78350f;font-size:0.72rem;margin-top:0.15rem">${escHtml(item.origText.slice(0, 120))}${item.origText.length > 120 ? '…' : ''}</div>` : '';
+  const rows = items.map(item => {
+    const secLabel = item.section.match(/Ⅱ\[\d+\][^\s]*/)?.[0] || item.section.slice(0, 10);
+    const loc  = item.location  ? `<span style="color:#64748b;font-size:0.7rem"> · ${escHtml(item.location)}</span>` : '';
+    const orig = item.origText  ? `<div style="color:#78350f;font-size:0.72rem;margin-top:0.15rem">${escHtml(item.origText.slice(0, 120))}${item.origText.length > 120 ? '…' : ''}</div>` : '';
     return `<div class="target-item">
-      <span class="target-num">#${i + 1}</span>
+      <span class="target-num">#${item.num}</span>
       <span class="target-sec">${escHtml(secLabel)}</span>
-      <div class="target-text">${escHtml(item.suggestion || item.problem || '').slice(0, 150)}${loc}${orig}</div>
+      <div class="target-text">${escHtml((item.suggestion || item.origText || '').slice(0, 150))}${loc}${orig}</div>
     </div>`;
   }).join('');
 
