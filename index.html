@@ -2454,6 +2454,8 @@ function loadSpecReviewFile(file) {
     resultMarkdown = ev.target.result;
     document.getElementById('specReviewFname').textContent = '✓ ' + file.name;
     document.getElementById('specReviewFname').style.color = 'var(--success)';
+    // 영문 명세서가 이미 로드돼 있으면 자동 실행
+    if (contents.en) runSpecCompare();
   };
   reader.readAsText(file);
 }
@@ -2523,8 +2525,35 @@ function parseReviewItems(markdown) {
   return items;
 }
 
-// 지적항목 1건 → API 호출 → {line, original, revised, reason} 또는 null
-async function callItemRevision(item, numberedSpec, itemNo) {
+// 지적사항 텍스트에서 인용구를 추출해 관련 줄만 좁혀서 반환 (토큰 절약)
+function extractRelevantLines(itemText, enLines) {
+  const quotes = [...itemText.matchAll(/["""「『']([^"""「』']{8,120})["""」』']/g)].map(m => m[1]);
+  if (quotes.length === 0) return null; // 인용구 없으면 전체 사용
+
+  const matchedIdxs = new Set();
+  for (const q of quotes) {
+    const qWords = q.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    if (qWords.length === 0) continue;
+    let bestScore = 0, bestIdx = -1;
+    enLines.forEach((line, i) => {
+      const lineLow = line.toLowerCase();
+      const score = qWords.filter(w => lineLow.includes(w)).length;
+      if (score > bestScore) { bestScore = score; bestIdx = i; }
+    });
+    if (bestIdx >= 0 && bestScore >= Math.min(2, qWords.length)) {
+      for (let k = Math.max(0, bestIdx - 10); k <= Math.min(enLines.length - 1, bestIdx + 10); k++) {
+        matchedIdxs.add(k);
+      }
+    }
+  }
+  if (matchedIdxs.size === 0) return null;
+  return [...matchedIdxs].sort((a, b) => a - b).map(i => `[${i + 1}] ${enLines[i]}`).join('\n');
+}
+
+async function callItemRevision(item, enLines, itemNo) {
+  const relevantSpec = extractRelevantLines(item.text, enLines)
+    || enLines.map((l, i) => `[${i + 1}] ${l}`).join('\n');
+
   const sysPrompt = `특허 번역 교정 전문가입니다.
 아래 [지적사항 ${itemNo}번]에 해당하는 문장을 [영문 명세서]에서 찾아 수정안을 JSON으로 반환하세요.
 지적사항에 인용된 원문 텍스트(따옴표 안 내용)를 명세서에서 정확히 찾으세요.
@@ -2541,19 +2570,19 @@ async function callItemRevision(item, numberedSpec, itemNo) {
         model: API_MODEL,
         messages: [
           { role: 'system', content: sysPrompt },
-          { role: 'user', content: `[지적사항 ${itemNo}번 / ${item.section}]\n${item.text}\n\n[영문 명세서]\n${numberedSpec}` }
+          { role: 'user', content: `[지적사항 ${itemNo}번 / ${item.section}]\n${item.text}\n\n[영문 명세서]\n${relevantSpec}` }
         ],
         max_completion_tokens: 1024,
         temperature: 0
       })
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { error: true, itemNo };
     const data = await res.json();
     let raw = data.choices[0].message.content.trim()
       .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
     const parsed = JSON.parse(raw);
     return parsed.skip ? null : { ...parsed, itemNo };
-  } catch { return null; }
+  } catch { return { error: true, itemNo }; }
 }
 
 async function runSpecCompare() {
@@ -2578,10 +2607,9 @@ async function runSpecCompare() {
   }
 
   const enLines = enText.split('\n');
-  const numberedSpec = enLines.map((l, i) => `[${i + 1}] ${l}`).join('\n');
 
   // 진행 상황 표시
-  const showProgress = (done, found) => {
+  const showProgress = (done, found, failed = 0) => {
     const pct = Math.round(done / total * 100);
     document.getElementById('specCompareContent').innerHTML = `
       <div style="padding:1rem 0.5rem">
@@ -2591,7 +2619,7 @@ async function runSpecCompare() {
         <div style="background:#e2e8f0;border-radius:0.5rem;height:10px;overflow:hidden">
           <div style="background:var(--primary);width:${pct}%;height:100%;border-radius:0.5rem;transition:width 0.4s ease"></div>
         </div>
-        <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.4rem">${pct}% 완료</div>
+        <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.4rem">${pct}% 완료${failed > 0 ? ` · <span style="color:#ef4444">${failed}건 매칭 실패</span>` : ''}</div>
       </div>`;
   };
 
@@ -2599,21 +2627,29 @@ async function runSpecCompare() {
 
   // 5개씩 병렬 처리
   const CONCURRENCY = 5;
-  let done = 0;
-  for (let i = 0; i < total; i += CONCURRENCY) {
-    const batch = reviewItems.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(batch.map((item, j) => callItemRevision(item, numberedSpec, i + j + 1)));
-    results.forEach(r => { if (r) specRevisions.push(r); });
-    done += batch.length;
-    showProgress(done, specRevisions.length);
+  let done = 0, failCount = 0;
+  try {
+    for (let i = 0; i < total; i += CONCURRENCY) {
+      const batch = reviewItems.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(batch.map((item, j) => callItemRevision(item, enLines, i + j + 1)));
+      results.forEach(r => {
+        if (r && !r.error) specRevisions.push(r);
+        else if (r && r.error) failCount++;
+      });
+      done += batch.length;
+      showProgress(done, specRevisions.length, failCount);
+    }
+    // 원본 검수결과 항목 순서 유지
+    specRevisions.sort((a, b) => (a.itemNo || 0) - (b.itemNo || 0));
+    renderSpecTable(specRevisions, total, failCount);
+  } catch (err) {
+    document.getElementById('specCompareContent').innerHTML =
+      `<div class="status-bar error">❌ 오류: ${escHtml(err.message)}</div>`;
+  } finally {
+    btn.textContent = specRevisions.length > 0 ? '🔄 재생성' : '✨ 수정본 생성';
+    specCompareRunning = false;
+    btn.disabled = false;
   }
-
-  // 원본 검수결과 항목 순서 유지
-  specRevisions.sort((a, b) => (a.itemNo || 0) - (b.itemNo || 0));
-  renderSpecTable(specRevisions);
-  btn.textContent = '🔄 재생성';
-  specCompareRunning = false;
-  btn.disabled = false;
 }
 
 // 단어 단위 diff → { origHtml, revHtml }
@@ -2660,11 +2696,17 @@ function wordDiff(origText, revText) {
   return { origHtml, revHtml };
 }
 
-function renderSpecTable(items) {
+function renderSpecTable(items, totalItems = 0, failCount = 0) {
   const count = items.length;
-  const badge = count
+  const dupLines = new Set(
+    items.map(r => r.line).filter((l, i, arr) => arr.indexOf(l) !== i)
+  );
+  const skipCount = totalItems - count - failCount;
+  let badge = count
     ? `<span class="spec-badge changes">⚠ ${count}건 수정</span>`
     : `<span class="spec-badge ok">✅ 수정사항 없음</span>`;
+  if (skipCount > 0) badge += ` <span class="spec-badge" style="background:#f1f5f9;color:#64748b">${skipCount}건 해당없음</span>`;
+  if (failCount > 0) badge += ` <span class="spec-badge" style="background:#fef2f2;color:#dc2626">${failCount}건 매칭실패</span>`;
 
   if (count === 0) {
     document.getElementById('specCompareContent').innerHTML =
@@ -2677,8 +2719,10 @@ function renderSpecTable(items) {
     const catLabel = catMatch ? `<span class="why-cat">${escHtml(catMatch[1])}</span><br>` : '';
     const reasonText = catMatch ? item.reason.replace(catMatch[1], '').trim() : (item.reason || '');
     const { origHtml, revHtml } = wordDiff(item.original || '', item.revised || '');
+    const dupWarn = dupLines.has(item.line)
+      ? `<span title="같은 줄에 복수 수정 — 저장 시 마지막 항목 적용" style="color:#f59e0b;margin-left:0.25rem">⚠</span>` : '';
     return `<tr data-idx="${idx}">
-      <td class="td-ln">${item.itemNo}<br><span style="color:#cbd5e1;font-size:0.62rem">L.${item.line}</span></td>
+      <td class="td-ln">${item.itemNo}${dupWarn}<br><span style="color:#cbd5e1;font-size:0.62rem">L.${item.line}</span></td>
       <td class="td-orig">${origHtml}</td>
       <td class="td-rev" contenteditable="true" data-idx="${idx}">${revHtml}</td>
       <td class="td-why">${catLabel}${escHtml(reasonText)}</td>
@@ -2729,6 +2773,7 @@ function downloadRevisedSpec() {
   const revMap = {};
   specRevisions.forEach(r => { revMap[r.line] = r.revised; });
 
+  const changedLines = Object.keys(revMap).length;
   const resultLines = enLines.map((l, i) => revMap[i + 1] !== undefined ? revMap[i + 1] : l);
   const text = resultLines.join('\n');
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
@@ -2740,6 +2785,13 @@ function downloadRevisedSpec() {
   a.download = `${baseName}_수정본.md`;
   a.click();
   URL.revokeObjectURL(url);
+  // 저장 완료 알림
+  const dlBtn = document.querySelector('#specCompareContent .btn-dl-revised');
+  if (dlBtn) {
+    const orig = dlBtn.textContent;
+    dlBtn.textContent = `✅ ${changedLines}줄 저장됨`;
+    setTimeout(() => { dlBtn.textContent = orig; }, 2500);
+  }
 }
 </script>
 </body>
