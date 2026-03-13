@@ -1261,7 +1261,11 @@ async function runReview() {
     btn.innerHTML = '✅ 검토 완료';
     document.getElementById('dlReviewSideBtn').style.display = 'block';
     document.getElementById('goToDrawingBtn').style.display = 'block';
-    if (contents.en) document.getElementById('resultTabsNav').style.display = 'flex';
+    if (contents.en) {
+      document.getElementById('resultTabsNav').style.display = 'flex';
+      switchResultTab('spec');
+      runSpecCompare();
+    }
 
   } catch (err) {
     showStatus('error', `❌ 오류: ${err.message}`);
