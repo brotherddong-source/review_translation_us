@@ -720,8 +720,33 @@
       font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.4rem;
       border-radius: 0.25rem;
     }
-    .spec-badge.changes { background: #fef3c7; color: #92400e; }
+    .spec-badge.changes {
+      background: #fef3c7; color: #92400e;
+      cursor: pointer; user-select: none;
+    }
+    .spec-badge.changes:hover { background: #fde68a; }
     .spec-badge.ok      { background: #dcfce7; color: #15803d; }
+    /* 수정안 적용 토글 */
+    .td-toggle { width: 2rem; text-align: center; vertical-align: middle; padding: 0 0.25rem; }
+    .apply-toggle {
+      appearance: none; width: 1rem; height: 1rem; border-radius: 0.25rem;
+      border: 2px solid #86efac; background: #dcfce7; cursor: pointer;
+      position: relative; vertical-align: middle;
+    }
+    .apply-toggle:checked { background: #16a34a; border-color: #16a34a; }
+    .apply-toggle:checked::after {
+      content: '✓'; position: absolute; color: white; font-size: 0.65rem;
+      font-weight: 800; top: -1px; left: 1px;
+    }
+    .apply-toggle:not(:checked) { background: #fef2f2; border-color: #fca5a5; }
+    .spec-table tr.row-skipped .td-orig {
+      background: #fff7ed !important; outline: 2px solid #fb923c; outline-offset: -2px;
+    }
+    .spec-table tr.row-skipped .td-rev { opacity: 0.35; }
+    /* 사이드바 축소 모드 */
+    .container.spec-mode { grid-template-columns: 240px 1fr; }
+    .container.spec-mode .left-panel .file-section:not(.always-show) { display: none; }
+    .container.spec-mode .left-panel { position: sticky; top: 65px; }
     /* 인라인 단어 diff 하이라이트 */
     mark.diff-del {
       background: #fee2e2; color: #991b1b;
@@ -1362,8 +1387,30 @@ function preprocessMd(raw) {
 // ═══════════════════════════════════════════════
 // Render & Utils
 // ═══════════════════════════════════════════════
+// 검토결과 Ⅱ 섹션 내 각 이슈 테이블 앞에 순번 삽입 (최종 렌더 시만)
+function addItemNumbers(md) {
+  const lines = md.split('\n');
+  const result = [];
+  let counter = 0;
+  let inII = false;
+  let prevWasTable = false;
+  for (const line of lines) {
+    if (/={6,}/.test(line)) inII = false;
+    if (/Ⅱ\[\d+\]/.test(line)) inII = true;
+    const isTableLine = line.trim().startsWith('|');
+    if (inII && isTableLine && !prevWasTable) {
+      counter++;
+      result.push(`**[#${counter}]**`);
+    }
+    result.push(line);
+    prevWasTable = isTableLine;
+  }
+  return result.join('\n');
+}
+
 function renderResult(cur) {
-  const processed = preprocessMd(resultMarkdown + (cur ? '\u200B' : ''));
+  const raw = resultMarkdown + (cur ? '\u200B' : '');
+  const processed = preprocessMd(cur ? raw : addItemNumbers(raw));
   document.getElementById('resultsContent').innerHTML =
     `<div class="md-body">${marked.parse(processed)}${cur ? '<span class="cursor"></span>' : ''}</div>`;
 }
@@ -2442,6 +2489,7 @@ function switchResultTab(name) {
   document.getElementById('resultsContent').style.display = isReview ? '' : 'none';
   document.getElementById('specComparePanel').style.display = isReview ? 'none' : 'block';
   document.getElementById('resultActions').style.display = isReview ? 'flex' : 'none';
+  document.querySelector('.container').classList.toggle('spec-mode', !isReview);
 }
 
 // 수정 결과 저장 (다운로드용): [{line, original, revised, reason}]
@@ -2618,7 +2666,7 @@ async function callItemRevision(item, enLines, itemNo) {
     let raw = data.choices[0].message.content.trim()
       .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
     const parsed = JSON.parse(raw);
-    return parsed.skip ? null : { ...parsed, itemNo };
+    return parsed.skip ? null : { ...parsed, itemNo, apply: true };
   } catch { return { error: true, itemNo }; }
 }
 
@@ -2761,7 +2809,7 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
     ? `<span style="font-size:0.75rem;color:#94a3b8;margin-left:0.25rem">(#1 ~ #${totalItems})</span>` : '';
   // 총 전달 → 수정 / 해당없음 / 실패 요약
   const summary = `<span style="font-size:0.8rem;color:var(--text-muted)">전달 <strong>${totalItems}</strong>건${itemRange} → </span>`
-    + (count    ? `<span class="spec-badge changes">수정 ${count}건</span>` : `<span class="spec-badge ok">수정 0건</span>`)
+    + (count    ? `<span class="spec-badge changes" onclick="toggleSpecTable()" title="클릭하여 접기/펼치기">수정 ${count}건 ▾</span>` : `<span class="spec-badge ok">수정 0건</span>`)
     + (skipCount > 0 ? ` <span class="spec-badge" style="background:#f1f5f9;color:#64748b">해당없음 ${skipCount}건</span>` : '')
     + (failCount > 0 ? ` <span class="spec-badge" style="background:#fef2f2;color:#dc2626">실패 ${failCount}건</span>` : '');
   const badge = summary;
@@ -2786,6 +2834,9 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
       <td class="td-orig">${origHtml}</td>
       <td class="td-rev" contenteditable="true" data-idx="${idx}">${revHtml}</td>
       <td class="td-why">${catLabel}${escHtml(reasonText)}</td>
+      <td class="td-toggle" title="체크 해제 시 원문 유지">
+        <input type="checkbox" class="apply-toggle" checked data-idx="${idx}" onchange="toggleRevisionApply(${idx}, this)">
+      </td>
     </tr>`;
   }).join('');
 
@@ -2794,7 +2845,7 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
       ${badge}
       <button class="btn-dl-revised" onclick="downloadRevisedSpec()">⬇ 수정본 저장</button>
     </div>
-    <div class="spec-table-wrap">
+    <div id="specTableWrap" class="spec-table-wrap">
       <table class="spec-table">
         <thead>
           <tr>
@@ -2802,6 +2853,7 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
             <th class="th-orig">📄 원문</th>
             <th class="th-rev">✏️ 수정안 (직접 편집 가능)</th>
             <th class="th-why">📋 수정근거 (검토 내용)</th>
+            <th class="td-toggle" title="수정 적용 여부">✓</th>
           </tr>
         </thead>
         <tbody id="specTbody">${rows}</tbody>
@@ -2818,6 +2870,21 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
   });
 }
 
+function toggleSpecTable() {
+  const wrap = document.getElementById('specTableWrap');
+  if (!wrap) return;
+  const hidden = wrap.style.display === 'none';
+  wrap.style.display = hidden ? '' : 'none';
+  const badge = document.querySelector('.spec-badge.changes');
+  if (badge) badge.textContent = badge.textContent.replace(hidden ? '▸' : '▾', hidden ? '▾' : '▸');
+}
+
+function toggleRevisionApply(idx, cb) {
+  if (specRevisions[idx]) specRevisions[idx].apply = cb.checked;
+  const row = cb.closest('tr');
+  row.classList.toggle('row-skipped', !cb.checked);
+}
+
 // ── 수정본 다운로드 (원문에 수정사항 적용 후 전체 저장) ──
 function downloadRevisedSpec() {
   if (!specRevisions.length) { alert('수정본이 없습니다. 먼저 수정본을 생성해 주세요.'); return; }
@@ -2829,9 +2896,9 @@ function downloadRevisedSpec() {
     if (specRevisions[idx]) specRevisions[idx].revised = cell.textContent;
   });
 
-  // 줄번호 → 수정안 맵
+  // 줄번호 → 수정안 맵 (apply=false 항목은 원문 유지)
   const revMap = {};
-  specRevisions.forEach(r => { revMap[r.line] = r.revised; });
+  specRevisions.forEach(r => { if (r.apply !== false) revMap[r.line] = r.revised; });
 
   const changedLines = Object.keys(revMap).length;
   const resultLines = enLines.map((l, i) => revMap[i + 1] !== undefined ? revMap[i + 1] : l);
