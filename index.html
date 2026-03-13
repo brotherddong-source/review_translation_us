@@ -2645,22 +2645,35 @@ async function runSpecCompare() {
 
   const enLines = enText.split('\n');
 
+  // 파싱된 항목 목록 칩 (번호 + 섹션 레이블)
+  const itemChips = reviewItems.map((item, i) => {
+    const sec = (item.section || '').replace(/={3,}/g, '').trim();
+    const label = sec.match(/Ⅱ\[\d+\]/)?.[0] || sec.slice(0, 8);
+    return `<span style="display:inline-flex;align-items:center;gap:0.2rem;font-size:0.68rem;font-weight:600;
+      padding:0.1rem 0.35rem;border-radius:0.25rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">
+      #${i + 1} <span style="color:#94a3b8">${escHtml(label)}</span></span>`;
+  }).join(' ');
+
   // 진행 상황 표시
   const showProgress = (done, found, failed = 0) => {
     const pct = Math.round(done / total * 100);
     const skipped = done - found - failed;
     document.getElementById('specCompareContent').innerHTML = `
-      <div style="padding:1rem 0.5rem">
-        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem">
-          ⏳ API 전달 <strong>${done} / ${total}</strong>건
+      <div style="padding:0.75rem 0.5rem">
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text);margin-bottom:0.4rem">
+          📋 전달 항목 총 <strong style="color:var(--primary)">${total}</strong>건
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.25rem;margin-bottom:0.75rem">${itemChips}</div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.4rem">
+          ⏳ 처리 <strong>${done} / ${total}</strong>
           &nbsp;→&nbsp; 수정 <strong style="color:var(--primary)">${found}</strong>
           ${skipped > 0 ? ` · 해당없음 <strong style="color:#64748b">${skipped}</strong>` : ''}
           ${failed  > 0 ? ` · <span style="color:#ef4444">실패 <strong>${failed}</strong></span>` : ''}
         </div>
-        <div style="background:#e2e8f0;border-radius:0.5rem;height:10px;overflow:hidden">
+        <div style="background:#e2e8f0;border-radius:0.5rem;height:8px;overflow:hidden">
           <div style="background:var(--primary);width:${pct}%;height:100%;border-radius:0.5rem;transition:width 0.4s ease"></div>
         </div>
-        <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.4rem">${pct}% 완료</div>
+        <div style="font-size:0.72rem;color:var(--text-light);margin-top:0.3rem">${pct}% 완료</div>
       </div>`;
   };
 
@@ -2743,8 +2756,11 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
     items.map(r => r.line).filter((l, i, arr) => arr.indexOf(l) !== i)
   );
   const skipCount = totalItems - count - failCount;
+  // 항목 번호 범위 표시 (#1~#N)
+  const itemRange = totalItems > 0
+    ? `<span style="font-size:0.75rem;color:#94a3b8;margin-left:0.25rem">(#1 ~ #${totalItems})</span>` : '';
   // 총 전달 → 수정 / 해당없음 / 실패 요약
-  const summary = `<span style="font-size:0.8rem;color:var(--text-muted)">API 전달 <strong>${totalItems}</strong>건 → </span>`
+  const summary = `<span style="font-size:0.8rem;color:var(--text-muted)">전달 <strong>${totalItems}</strong>건${itemRange} → </span>`
     + (count    ? `<span class="spec-badge changes">수정 ${count}건</span>` : `<span class="spec-badge ok">수정 0건</span>`)
     + (skipCount > 0 ? ` <span class="spec-badge" style="background:#f1f5f9;color:#64748b">해당없음 ${skipCount}건</span>` : '')
     + (failCount > 0 ? ` <span class="spec-badge" style="background:#fef2f2;color:#dc2626">실패 ${failCount}건</span>` : '');
