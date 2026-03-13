@@ -2552,7 +2552,7 @@ async function callItemRevision(item, numberedSpec, itemNo) {
     let raw = data.choices[0].message.content.trim()
       .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
     const parsed = JSON.parse(raw);
-    return parsed.skip ? null : parsed;
+    return parsed.skip ? null : { ...parsed, itemNo };
   } catch { return null; }
 }
 
@@ -2608,8 +2608,8 @@ async function runSpecCompare() {
     showProgress(done, specRevisions.length);
   }
 
-  // 줄 번호 순 정렬 후 렌더
-  specRevisions.sort((a, b) => (a.line || 0) - (b.line || 0));
+  // 원본 검수결과 항목 순서 유지
+  specRevisions.sort((a, b) => (a.itemNo || 0) - (b.itemNo || 0));
   renderSpecTable(specRevisions);
   btn.textContent = '🔄 재생성';
   specCompareRunning = false;
@@ -2678,7 +2678,7 @@ function renderSpecTable(items) {
     const reasonText = catMatch ? item.reason.replace(catMatch[1], '').trim() : (item.reason || '');
     const { origHtml, revHtml } = wordDiff(item.original || '', item.revised || '');
     return `<tr data-idx="${idx}">
-      <td class="td-ln">${idx + 1}<br><span style="color:#cbd5e1;font-size:0.62rem">L.${item.line}</span></td>
+      <td class="td-ln">${item.itemNo}<br><span style="color:#cbd5e1;font-size:0.62rem">L.${item.line}</span></td>
       <td class="td-orig">${origHtml}</td>
       <td class="td-rev" contenteditable="true" data-idx="${idx}">${revHtml}</td>
       <td class="td-why">${catLabel}${escHtml(reasonText)}</td>
