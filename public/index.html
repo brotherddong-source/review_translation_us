@@ -536,6 +536,20 @@
     tr:hover .btn-row-del { opacity: 1; }
     .btn-row-del:hover { color: var(--error); background: var(--error-light); }
 
+    /* ── Spec suggestion column ── */
+    .th-suggest { background: #1e3a5f !important; min-width: 7rem; }
+    .td-suggest { min-width: 7rem; max-width: 11rem; padding: 0.3rem 0.5rem !important; vertical-align: middle; }
+    .btn-suggest {
+      display: inline-block; background: #dbeafe; border: 1px solid #93c5fd;
+      border-radius: 0.3rem; padding: 0.2rem 0.5rem; font-size: 0.75rem;
+      color: #1d4ed8; cursor: pointer; white-space: normal;
+      text-align: left; width: 100%; line-height: 1.4;
+      transition: background 0.15s;
+    }
+    .btn-suggest:hover { background: #bfdbfe; }
+    .suggest-applied { font-size: 0.72rem; color: #15803d; padding: 0.15rem 0; display: inline-block; }
+    .suggest-match { font-size: 0.75rem; color: #15803d; display: inline-block; line-height: 1.4; }
+
     /* ── Editable table cells ── */
     .editable-cell { cursor: text; transition: background 0.1s; }
     .editable-cell:hover { background: #f0f9ff !important; }
@@ -552,29 +566,204 @@
       pointer-events: none;
     }
 
+    /* ── Drawing Tab: top/bottom layout ── */
+    #tab-drawing .container { display: flex; flex-direction: column; gap: 1rem; }
+    .top-panel {
+      display: flex; flex-direction: row; gap: 0.75rem;
+      align-items: flex-start; flex-wrap: wrap;
+    }
+    .top-panel .card { flex: 1; min-width: 200px; }
+    .bottom-panel { display: flex; flex-direction: column; width: 100%; }
+    #tab-drawing .btn-review {
+      width: auto; min-width: 130px; align-self: stretch; flex-shrink: 0;
+    }
+    @media (max-width: 700px) { .top-panel { flex-direction: column; } }
+
     /* ── Lightbox ── */
     #imgLightbox {
-      display: none; position: fixed; inset: 0;
-      z-index: 9999; align-items: center; justify-content: center;
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      pointer-events: none;
     }
-    #imgLightbox.open { display: flex; }
+    #imgLightbox.open { display: block; }
     #lbCard {
       background: white; border-radius: 0.75rem;
       box-shadow: 0 12px 48px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.06);
-      padding: 0.5rem; position: relative;
-      max-width: min(80vw, 960px); max-height: 85vh; overflow: auto;
+      padding: 0 0.5rem 0.5rem; position: fixed;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      max-width: min(82vw, 1000px); max-height: 88vh; overflow: auto;
+      user-select: none; pointer-events: auto;
     }
+    #lbDragBar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.35rem 0.25rem 0.35rem 0.625rem;
+      cursor: grab; position: sticky; top: 0;
+      background: white; border-radius: 0.75rem 0.75rem 0 0;
+      border-bottom: 1px solid var(--border); margin-bottom: 0.5rem;
+    }
+    #lbDragBar:active { cursor: grabbing; }
+    #lbDragBar .drag-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
     #lbCard img {
-      display: block; max-width: 75vw; max-height: calc(85vh - 2.5rem);
+      display: block; max-width: 78vw; max-height: calc(88vh - 4rem);
       object-fit: contain; border-radius: 0.375rem; transition: transform 0.25s;
     }
     #lbClose {
-      position: absolute; top: 0.375rem; right: 0.5rem;
       color: var(--text-muted); font-size: 1.125rem; line-height: 1;
       background: none; border: none; cursor: pointer;
       padding: 0.25rem 0.4rem; border-radius: 0.375rem; transition: all 0.15s;
+      flex-shrink: 0;
     }
     #lbClose:hover { background: var(--error-light); color: var(--error); }
+
+    /* ── Result Tabs ── */
+    .result-tabs {
+      display: none;
+      border-bottom: 2px solid var(--border);
+      margin: -0.75rem -1.125rem 0.75rem;
+      padding: 0 1.125rem;
+    }
+    .result-tab-btn {
+      padding: 0.55rem 1rem; border: none; background: none;
+      font-size: 0.8125rem; font-weight: 600; color: var(--text-muted);
+      cursor: pointer; border-bottom: 3px solid transparent;
+      margin-bottom: -2px; transition: all 0.15s;
+    }
+    .result-tab-btn:hover { color: var(--primary); }
+    .result-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Spec Compare Panel ── */
+    #specComparePanel { display: none; }
+    .spec-gen-bar {
+      display: flex; align-items: center; gap: 0.875rem;
+      padding: 0.75rem; background: var(--bg); border-radius: 0.5rem;
+      margin-bottom: 0.75rem; flex-wrap: wrap;
+    }
+    .spec-gen-bar p { flex: 1; font-size: 0.78rem; color: var(--text-muted); line-height: 1.55; min-width: 180px; }
+    .btn-gen-spec {
+      padding: 0.5rem 1.125rem; background: var(--primary); color: white;
+      border: none; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+    }
+    .btn-gen-spec:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-gen-spec:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+    .spec-compare-wrap {
+      display: grid; grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;
+    }
+    .spec-pane { overflow-y: auto; max-height: 72vh; }
+    .spec-pane.original { border-right: 1px solid var(--border); }
+    .spec-pane-header {
+      padding: 0.4rem 0.75rem; font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      position: sticky; top: 0; z-index: 1;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .spec-pane.original .spec-pane-header { background: #fff7ed; color: #92400e; border-bottom: 1px solid #fed7aa; }
+    .spec-pane.revised  .spec-pane-header { background: #f0fdf4; color: #15803d; border-bottom: 1px solid #bbf7d0; }
+    .spec-line { display: flex; align-items: stretch; min-height: 1.6rem; border-bottom: 1px solid #f1f5f9; }
+    .spec-line-num {
+      width: 2.75rem; text-align: right; padding: 0.18rem 0.4rem;
+      font-size: 0.67rem; color: #94a3b8; flex-shrink: 0; user-select: none;
+      background: #fafafa; border-right: 1px solid var(--border);
+      line-height: 1.75; font-family: monospace;
+    }
+    .spec-line-text {
+      flex: 1; padding: 0.18rem 0.5rem;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.74rem; white-space: pre-wrap; word-break: break-word;
+      line-height: 1.75; color: var(--text);
+    }
+    /* 원본 — 수정 필요 줄 (노란 하이라이트) */
+    .spec-line.line-changed .spec-line-num { background: #fef3c7 !important; }
+    .spec-line.line-changed .spec-line-text { background: #fefce8; color: #78350f; }
+    /* 원본 — 삭제된 줄 */
+    .spec-line.line-del .spec-line-num { background: #fef2f2 !important; }
+    .spec-line.line-del .spec-line-text { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+    /* 수정본 — 추가/수정된 줄 */
+    .spec-line.line-new .spec-line-num { background: #dcfce7 !important; }
+    .spec-line.line-new .spec-line-text { background: #f0fdf4; color: #14532d; font-weight: 500; }
+    /* 정렬용 공백 줄 */
+    .spec-line.line-spacer .spec-line-text { background: #f8fafc; }
+    .spec-line.line-spacer .spec-line-num  { background: #f8fafc; }
+    .spec-compare-badge {
+      display: inline-flex; align-items: center; gap: 0.2rem;
+      font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem; text-transform: none; letter-spacing: 0;
+    }
+    .badge-changes { background: #fef3c7; color: #92400e; }
+    .badge-ok      { background: #dcfce7; color: #15803d; }
+
+    /* 클릭 가능한 수정 줄 */
+    .spec-line.line-changed,
+    .spec-line.line-del { cursor: pointer; }
+    .spec-line.line-changed:hover .spec-line-text,
+    .spec-line.line-del:hover .spec-line-text  { filter: brightness(0.95); }
+    .spec-line.has-rationale .spec-line-num::after {
+      content: '💬'; font-size: 0.6rem; display: block;
+      margin-top: 0.1rem; opacity: 0.7;
+    }
+
+    /* 수정본 직접 편집 */
+    .spec-line-text[contenteditable="true"] { cursor: text; outline: none; }
+    .spec-line-text[contenteditable="true"]:focus {
+      background: #eff6ff !important;
+      box-shadow: inset 0 0 0 2px #93c5fd;
+    }
+    .spec-line.user-edited .spec-line-num { background: #ede9fe !important; }
+    .spec-line.user-edited .spec-line-text { background: #faf5ff !important; color: #4c1d95; }
+
+    /* 수정본 헤더 다운로드 버튼 */
+    .btn-dl-revised {
+      margin-left: auto; flex-shrink: 0;
+      padding: 0.15rem 0.5rem; font-size: 0.68rem; font-weight: 700;
+      background: #15803d; color: white; border: none;
+      border-radius: 0.3rem; cursor: pointer; transition: background 0.15s;
+      text-transform: none; letter-spacing: 0;
+    }
+    .btn-dl-revised:hover { background: #166534; }
+
+    /* ── 수정근거 팝오버 ── */
+    #rationalePopover {
+      position: fixed; z-index: 5000;
+      background: white; border: 1px solid var(--border);
+      border-radius: 0.625rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
+      max-width: 420px; min-width: 280px;
+      font-size: 0.8125rem; display: none;
+      animation: fadeInUp 0.15s ease;
+    }
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    #rationalePopover.open { display: block; }
+    .rp-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.5rem 0.75rem; background: #1e3a5f; color: white;
+      border-radius: 0.625rem 0.625rem 0 0; font-weight: 700; font-size: 0.78rem;
+    }
+    .rp-close {
+      background: none; border: none; color: rgba(255,255,255,0.7);
+      cursor: pointer; font-size: 1rem; line-height: 1; padding: 0.1rem 0.3rem;
+      border-radius: 0.25rem; transition: color 0.15s;
+    }
+    .rp-close:hover { color: white; }
+    .rp-body { padding: 0.625rem 0.75rem; }
+    .rp-orig {
+      font-size: 0.74rem; font-family: monospace;
+      background: #fefce8; border: 1px solid #fde68a; border-radius: 0.375rem;
+      padding: 0.35rem 0.5rem; margin-bottom: 0.5rem;
+      color: #78350f; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+    }
+    .rp-corr {
+      font-size: 0.74rem; font-family: monospace;
+      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.375rem;
+      padding: 0.35rem 0.5rem; margin-bottom: 0.5rem;
+      color: #14532d; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+    }
+    .rp-reason {
+      font-size: 0.78rem; color: var(--text); line-height: 1.65;
+      border-top: 1px solid var(--border); padding-top: 0.5rem;
+    }
+    .rp-reason strong { color: #1e3a5f; }
+    .rp-loading { color: var(--text-muted); font-size: 0.78rem; text-align: center; padding: 0.5rem 0; }
   </style>
 </head>
 <body>
@@ -642,7 +831,7 @@
           <input type="file" accept=".md,.txt" onchange="onFileSelect(event,'bi')">
           <div class="zone-badge">📋</div>
           <div class="zone-info">
-            <div class="zone-label">국영문 병렬 명세서</div>
+            <div class="zone-label">국문+영문 병렬 명세서</div>
             <div class="zone-sub">Bilingual Aligned Specification (.md)</div>
             <div class="zone-filename" id="fname-bi"></div>
           </div>
@@ -661,8 +850,17 @@
     </div>
 
     <!-- Review Button -->
-    <button class="btn-review" id="reviewBtn" onclick="runReview()">
-      🔍 번역 검토 실행
+    <div style="display:flex;gap:0.5rem;align-items:stretch">
+      <button class="btn-review" id="reviewBtn" onclick="runReview()" style="flex:1">
+        🔍 번역 검토 실행
+      </button>
+      <button class="btn-review" id="dlReviewSideBtn" onclick="downloadReviewDocx(this)"
+        style="display:none;flex-shrink:0;width:auto;padding:1.125rem 1rem;background:#334155;box-shadow:0 4px 14px rgba(51,65,85,0.35)">
+        📥 다운로드
+      </button>
+    </div>
+    <button class="btn-review" id="goToDrawingBtn" onclick="switchTab('drawing')" style="display:none;margin-top:0.5rem;background:#16a34a;box-shadow:0 4px 14px rgba(22,163,74,0.35)">
+      📐 도면 번역하러 가기
     </button>
 
   </div>
@@ -675,7 +873,13 @@
         <div class="results-actions" id="resultActions" style="display:none">
           <button class="btn-action" onclick="copyMarkdown()">📋 마크다운 복사</button>
           <button class="btn-action" onclick="copyPlain()">📄 텍스트 복사</button>
+          <button class="btn-action" id="dlDocxBtn" onclick="downloadReviewDocx()">📥 DOCX 다운로드</button>
         </div>
+      </div>
+      <!-- 결과 탭 (검토 완료 후 표시) -->
+      <div class="result-tabs" id="resultTabsNav">
+        <button class="result-tab-btn active" id="rtab-review" onclick="switchResultTab('review')">📊 검토 결과</button>
+        <button class="result-tab-btn" id="rtab-spec" onclick="switchResultTab('spec')">📋 명세서 비교</button>
       </div>
       <div id="statusBar" style="display:none"></div>
       <div class="results-content" id="resultsContent">
@@ -688,6 +892,15 @@
           </div>
         </div>
       </div>
+      <!-- 명세서 비교 패널 -->
+      <div id="specComparePanel">
+        <div class="spec-gen-bar">
+          <p>검토 결과를 바탕으로 <strong>AI가 영문 명세서 수정본을 생성</strong>합니다.<br>
+             원본(좌)에서 수정 필요 줄이 하이라이팅되고, 수정본(우)과 줄 단위로 비교됩니다.</p>
+          <button class="btn-gen-spec" id="genSpecBtn" onclick="runSpecCompare()">✨ 수정본 생성</button>
+        </div>
+        <div id="specCompareContent"></div>
+      </div>
     </div>
   </div>
 
@@ -698,8 +911,8 @@
 <div id="tab-drawing" class="tab-panel">
   <div class="container">
 
-    <!-- LEFT -->
-    <div class="left-panel">
+    <!-- TOP -->
+    <div class="top-panel">
 
       <div class="card">
         <div class="card-title">📄 도면 PDF 업로드</div>
@@ -763,8 +976,8 @@
 
     </div>
 
-    <!-- RIGHT -->
-    <div class="right-panel">
+    <!-- BOTTOM -->
+    <div class="bottom-panel">
       <div class="card results-card">
         <div class="results-header">
           <div class="card-title" style="margin-bottom:0">📊 도면 번역 테이블</div>
@@ -791,6 +1004,13 @@
             </div>
           </div>
         </div>
+        <div class="results-actions" id="drawingResultActionsBottom" style="display:none;padding:0.75rem 0 0;border-top:1px solid var(--border);margin-top:0.75rem;justify-content:flex-end">
+          <button class="btn-action" onclick="runRetranslate()" style="color:#b45309;border-color:#fcd34d;background:#fffbeb;font-weight:600">📝 번역 재요청</button>
+          <button class="btn-action" id="verifyBtnBottom" onclick="runTermVerify()" style="color:#0f766e;border-color:#5eead4;background:#f0fdfa;font-weight:600">🔎 용어 검증</button>
+          <button class="btn-action" onclick="copyDrawingTsv()">📋 TSV 복사</button>
+          <button class="btn-action" onclick="downloadDrawingCsv()">⬇️ CSV 저장</button>
+          <button class="btn-action" onclick="downloadDrawingDocx()" style="font-weight:600;color:#1d4ed8">📄 DOCX 저장</button>
+        </div>
       </div>
     </div>
 
@@ -798,14 +1018,30 @@
 </div><!-- /tab-drawing -->
 
 <!-- ── Lightbox ── -->
-<div id="imgLightbox" onclick="closeLightbox(event)">
+<div id="imgLightbox">
   <div id="lbCard">
-    <button id="lbClose" onclick="closeLightbox()">✕</button>
+    <div id="lbDragBar">
+      <span class="drag-label">⠿ 드래그로 이동</span>
+      <button id="lbClose" onclick="closeLightbox()">✕</button>
+    </div>
     <img id="lbImg" src="" alt="">
   </div>
 </div>
 
 <button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<!-- ── 수정근거 팝오버 ── -->
+<div id="rationalePopover">
+  <div class="rp-header">
+    <span id="rpTitle">📋 수정 근거</span>
+    <button class="rp-close" onclick="closeRationalePopover()">✕</button>
+  </div>
+  <div class="rp-body">
+    <div id="rpOrig" class="rp-orig" style="display:none"></div>
+    <div id="rpCorr" class="rp-corr" style="display:none"></div>
+    <div id="rpReason" class="rp-reason"></div>
+  </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════
@@ -816,6 +1052,17 @@ let API_MODEL = 'gpt-5.2';
 const contents = { ko: '', en: '', bi: '' };
 let resultMarkdown = '';
 let isStreaming = false;
+
+const REVIEW_SECTIONS = [
+  { id: 'I-2',    label: 'Ⅰ[1] 오탈자·비문',        focus: 'Ⅰ. 국문 명세서 자체 문제 분석 > [2] 오탈자 및 비문' },
+  { id: 'I-3',    label: 'Ⅰ[2] 도면부호 불일치',    focus: 'Ⅰ. 국문 명세서 자체 문제 분석 > [3] 도면부호 및 구성요소 불일치' },
+  { id: 'I-4',    label: 'Ⅰ[3] 내부 논리 불일치',   focus: 'Ⅰ. 국문 명세서 자체 문제 분석 > [4] 내부 논리 불일치 (청구항-상세설명-실시예 간)' },
+  { id: 'II-1',   label: 'Ⅱ[1] 번역 누락',          focus: 'Ⅱ. 영문 번역 명세서 품질 분석 > [1] 번역 누락 (Omission)' },
+  { id: 'II-2',   label: 'Ⅱ[2] 범위 변경·왜곡',     focus: 'Ⅱ. 영문 번역 명세서 품질 분석 > [2] 범위 변경 또는 의미 왜곡' },
+  { id: 'II-35',  label: 'Ⅱ[3] 특허 문체+문법',     focus: 'Ⅱ. 영문 번역 명세서 품질 분석 > [3] 특허 문체 및 형식 위반 + [5] 문법 오류 또는 법적 모호성' },
+  { id: 'II-4',   label: 'Ⅱ[4] 용어 불일치',        focus: 'Ⅱ. 영문 번역 명세서 품질 분석 > [4] 용어 불일치' },
+  { id: 'summary',label: 'Ⅲ+Ⅳ 종합 요약·점수',     focus: 'Ⅲ. 종합 리스크 요약 및 Ⅳ. 점수 산출 (이전 섹션에서 발견된 모든 이슈를 기반으로)' },
+];
 
 // ─── config 로드: 배포(Next.js /api/config) → 로컬(config.txt) 순서로 시도 ───
 async function loadConfig() {
@@ -938,77 +1185,128 @@ function updateTokenBar() {
   if (est > 80000) bar.textContent += ' ⚠️ 토큰이 많습니다';
 }
 
-// ═══════════════════════════════════════════════
-// Review
-// ═══════════════════════════════════════════════
-async function runReview() {
-  if (isStreaming) return;
-
-  if (!API_KEY) {
-    showStatus('error', '❌ API Key가 연결되지 않았습니다. config.txt를 확인해 주세요.');
+// ── 번역 파서에서 파일 자동 수신 ──
+function loadTextContent(text, k, filename) {
+  if (!text) return;
+  contents[k] = text;
+  document.getElementById(`fname-${k}`).textContent = `✓ ${filename}`;
+  document.getElementById(`zone-${k}`).classList.add('loaded');
+  updateTokenBar();
+  // 국문+영문 병렬 명세서가 로드되면 도면번역기 참고 명세서에도 자동 반영
+  if (k === 'bi') {
+    drawingRefSpec = text;
+    document.getElementById('fname-ref').textContent = '✓ 국문+영문 명세서 (검토 탭에서 자동 로드)';
+    document.getElementById('zone-ref').classList.add('loaded');
+  }
+}
+window.addEventListener('message', function(event) {
+  const data = event.data;
+  if (!data) return;
+  if (data.type === 'reviewerPing') {
+    (event.source || window.opener)?.postMessage({ type: 'reviewerReady' }, '*');
     return;
   }
+  if (data.type !== 'loadTranslationFiles') return;
+  if (data.ko) loadTextContent(data.ko, 'ko', '01_국문.md');
+  if (data.en) loadTextContent(data.en, 'en', '02_영문.md');
+  if (data.bi) loadTextContent(data.bi, 'bi', '03_국문+영문.md');
+}, false);
+window.addEventListener('DOMContentLoaded', function() {
+  if (window.opener) {
+    window.opener.postMessage({ type: 'reviewerReady' }, '*');
+  }
+});
+
+// ═══════════════════════════════════════════════
+// Review — 섹션별 개별 API 호출 (전수 검사 보장)
+// ═══════════════════════════════════════════════
+
+async function streamSection(userMsg, systemPrompt) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    body: JSON.stringify({
+      model: API_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userMsg }
+      ],
+      max_completion_tokens: 16384,
+      temperature: 0,
+      stream: true
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', lastRender = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]') continue;
+      try { resultMarkdown += JSON.parse(raw).choices?.[0]?.delta?.content ?? ''; } catch {}
+    }
+    const now = Date.now();
+    if (now - lastRender > 200) { lastRender = now; renderResult(true); }
+  }
+  renderResult(false);
+}
+
+async function runReview() {
+  if (isStreaming) return;
+  if (!API_KEY) { showStatus('error', '❌ API Key가 연결되지 않았습니다. config.txt를 확인해 주세요.'); return; }
   const prompt = document.getElementById('promptArea').value.trim();
-  if (!prompt) { showStatus('error', '❌ 프롬프트가 없습니다. prompt.txt를 확인하거나 프롬프트 섹션(▼)을 열어 직접 입력하세요.'); return; }
+  if (!prompt) { showStatus('error', '❌ 프롬프트가 없습니다.'); return; }
   if (!Object.values(contents).some(c => c.length)) { showStatus('error', '❌ 최소 하나의 파일을 업로드해 주세요.'); return; }
 
-  let userMsg = '다음 특허 명세서들을 검토해 주세요.\n';
-  if (contents.ko) userMsg += `\n---\n## [INPUT 1] 국문 특허 명세서\n\n${contents.ko}\n`;
-  if (contents.en) userMsg += `\n---\n## [INPUT 2] 영문 번역 명세서\n\n${contents.en}\n`;
-  if (contents.bi) userMsg += `\n---\n## [INPUT 3] 국영문 병렬 명세서\n\n${contents.bi}\n`;
+  let docMsg = '다음 특허 명세서들을 검토해 주세요.\n';
+  if (contents.ko) docMsg += `\n---\n## [INPUT 1] 국문 특허 명세서\n\n${contents.ko}\n`;
+  if (contents.en) docMsg += `\n---\n## [INPUT 2] 영문 번역 명세서\n\n${contents.en}\n`;
+  if (contents.bi) docMsg += `\n---\n## [INPUT 3] 국문+영문 병렬 명세서\n\n${contents.bi}\n`;
 
   isStreaming = true;
   const btn = document.getElementById('reviewBtn');
   btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> AI 검토 중...';
-  document.getElementById('resultActions').style.display = 'none';
-  showStatus('info', '⏳ AI가 번역을 분석하고 있습니다. 문서 길이에 따라 1~3분 소요될 수 있습니다...');
-  setResults('<div class="results-placeholder"><div class="placeholder-icon">⏳</div><div class="placeholder-title">분석 중...</div></div>');
+  btn.innerHTML = '🔍 번역 검토 실행';
+  document.getElementById('goToDrawingBtn').style.display = 'none';
+  document.getElementById('dlReviewSideBtn').style.display = 'none';
   resultMarkdown = '';
+  setResults('<div class="results-placeholder"><div class="placeholder-icon">⏳</div><div class="placeholder-title">섹션별 전수 검사 시작...</div></div>');
+  document.getElementById('resultActions').style.display = 'none';
+  document.getElementById('resultTabsNav').style.display = 'none';
+  switchResultTab('review');
 
+  let reviewCompleted = false;
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-      body: JSON.stringify({
-        model: API_MODEL,
-        messages: [
-          { role: 'system', content: prompt },
-          { role: 'user',   content: userMsg }
-        ],
-        max_completion_tokens: 16384,
-        temperature: 0.2,
-        stream: true
-      })
-    });
+    for (let i = 0; i < REVIEW_SECTIONS.length; i++) {
+      const section = REVIEW_SECTIONS[i];
+      const progress = `[${i + 1}/${REVIEW_SECTIONS.length}]`;
+      showStatus('info', `⏳ ${progress} ${section.label} 검토중...`);
+      btn.innerHTML = `<div class="spinner"></div> ${progress} ${section.label}`;
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
+      resultMarkdown += `\n\n==============================\n${section.label}\n==============================\n\n`;
+      renderResult(true);
+
+      const sectionMsg = `${docMsg}\n---\n\n[검토 지시]\n이번 호출에서는 **${section.focus}** 섹션 하나만 검토하세요.\n다른 섹션 내용은 절대 출력하지 마세요.\nK-0001부터 마지막 세그먼트까지 모든 세그먼트를 순서대로 빠짐없이 전수 검사하고, 발견된 모든 항목을 출력하세요. 생략·축약·대표 사례 선별 금지.`;
+
+      await streamSection(sectionMsg, prompt);
     }
 
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '', lastRender = 0;
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split('\n'); buf = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const raw = line.slice(6).trim();
-        if (raw === '[DONE]') continue;
-        try { resultMarkdown += JSON.parse(raw).choices?.[0]?.delta?.content ?? ''; } catch {}
-      }
-      const now = Date.now();
-      if (now - lastRender > 200) { lastRender = now; renderResult(true); }
-    }
-
-    renderResult(false);
+    reviewCompleted = true;
     document.getElementById('resultActions').style.display = 'flex';
-    showStatus('success', '✅ 검토 완료');
+    showStatus('success', `✅ 전수 검사 완료 — ${REVIEW_SECTIONS.length}개 섹션 독립 검토`);
+    btn.innerHTML = '✅ 검토 완료';
+    document.getElementById('dlReviewSideBtn').style.display = 'block';
+    document.getElementById('goToDrawingBtn').style.display = 'block';
+    if (contents.en) document.getElementById('resultTabsNav').style.display = 'flex';
 
   } catch (err) {
     showStatus('error', `❌ 오류: ${err.message}`);
@@ -1017,7 +1315,7 @@ async function runReview() {
   } finally {
     isStreaming = false;
     btn.disabled = false;
-    btn.innerHTML = '🔍 번역 검토 실행';
+    if (!reviewCompleted) btn.innerHTML = '🔍 번역 검토 실행';
   }
 }
 
@@ -1085,6 +1383,143 @@ function copyPlain() {
   const el = document.querySelector('.md-body');
   navigator.clipboard.writeText(el ? el.innerText : resultMarkdown).then(() => flash('📄 텍스트 복사', '✅ 복사됨!'));
 }
+async function downloadReviewDocx(callerBtn) {
+  if (!resultMarkdown || !resultMarkdown.trim()) {
+    alert('검토 결과가 없습니다. 먼저 번역 검토를 실행하세요.'); return;
+  }
+  if (typeof docx === 'undefined') {
+    alert('docx 라이브러리 로드 중입니다. 잠시 후 다시 시도해 주세요.'); return;
+  }
+  const btn = callerBtn || document.getElementById('dlDocxBtn');
+  const origText = btn.textContent;
+  btn.textContent = '⏳ 생성 중...'; btn.disabled = true;
+  try {
+    const { Document, Packer, Paragraph, Table, TableRow, TableCell,
+            HeadingLevel, TextRun, WidthType, ShadingType } = docx;
+
+    function parseInline(text, base) {
+      base = base || {};
+      const runs = [];
+      const re = /\*\*([^*]+)\*\*/g;
+      let last = 0, m;
+      while ((m = re.exec(text)) !== null) {
+        if (m.index > last) runs.push(new TextRun(Object.assign({}, base, { text: text.slice(last, m.index) })));
+        runs.push(new TextRun(Object.assign({}, base, { text: m[1], bold: true })));
+        last = m.index + m[0].length;
+      }
+      if (last < text.length) runs.push(new TextRun(Object.assign({}, base, { text: text.slice(last) })));
+      return runs.length ? runs : [new TextRun(Object.assign({}, base, { text: text }))];
+    }
+    const makeCell = (text, isHeader) => new TableCell({
+      children: [new Paragraph({ children: [new TextRun({
+        text: String(text || '').trim(), bold: isHeader,
+        size: isHeader ? 18 : 16, color: isHeader ? 'FFFFFF' : '1e293b'
+      })] })],
+      shading: isHeader ? { fill: '334155', type: ShadingType.SOLID } : undefined
+    });
+
+    const docChildren = [
+      new Paragraph({ children: [new TextRun({ text: '번역 검토 결과', bold: true, size: 36, color: '1e293b' })], heading: HeadingLevel.HEADING_1 }),
+      new Paragraph({ children: [new TextRun('')] })
+    ];
+
+    const lines = resultMarkdown.split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      const raw = lines[i];
+      const trimmed = raw.trim();
+
+      // Section separator ======...
+      if (/^={5,}/.test(trimmed)) {
+        i++;
+        const title = (lines[i] || '').trim();
+        if (title && !/^={5,}/.test(title)) {
+          docChildren.push(new Paragraph({
+            children: [new TextRun({ text: title, bold: true, size: 28, color: '1e40af' })],
+            heading: HeadingLevel.HEADING_2
+          }));
+          i++;
+          if (i < lines.length && /^={5,}/.test(lines[i].trim())) i++;
+        }
+        continue;
+      }
+      // ## heading
+      if (/^##\s/.test(raw)) {
+        docChildren.push(new Paragraph({
+          children: parseInline(raw.replace(/^#+\s+/, ''), { bold: true, color: '1e40af', size: 24 }),
+          heading: HeadingLevel.HEADING_2
+        })); i++; continue;
+      }
+      // ### heading
+      if (/^###\s/.test(raw)) {
+        docChildren.push(new Paragraph({
+          children: parseInline(raw.replace(/^#+\s+/, ''), { bold: true, size: 22 }),
+          heading: HeadingLevel.HEADING_3
+        })); i++; continue;
+      }
+      // Table block
+      if (/^\|/.test(trimmed)) {
+        const tLines = [];
+        while (i < lines.length && /^\|/.test(lines[i].trim())) { tLines.push(lines[i]); i++; }
+        const dataLines = tLines.filter(l => !/^\|\s*[-:]+[-:\s|]*\|/.test(l));
+        if (dataLines.length) {
+          const rows = dataLines.map(l => l.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+          docChildren.push(new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: rows.map((cells, ri) => new TableRow({
+              children: cells.map(c => makeCell(c, ri === 0)), tableHeader: ri === 0
+            }))
+          }));
+          docChildren.push(new Paragraph({ children: [new TextRun('')] }));
+        }
+        continue;
+      }
+      // Blockquote
+      if (/^>\s/.test(trimmed)) {
+        docChildren.push(new Paragraph({
+          children: parseInline(trimmed.replace(/^>\s*/, ''), { color: '64748b', italics: true }),
+          indent: { left: 720 }
+        })); i++; continue;
+      }
+      // Horizontal rule
+      if (/^[-─=]{3,}$/.test(trimmed)) {
+        docChildren.push(new Paragraph({ children: [new TextRun({ text: '─'.repeat(60), color: 'cbd5e1', size: 16 })] }));
+        i++; continue;
+      }
+      // List item (- or *)
+      if (/^[*\-]\s/.test(trimmed)) {
+        docChildren.push(new Paragraph({
+          children: parseInline('• ' + trimmed.replace(/^[*\-]\s+/, '')),
+          indent: { left: 360 }
+        })); i++; continue;
+      }
+      // Numbered list
+      if (/^\d+[.)]\s/.test(trimmed)) {
+        docChildren.push(new Paragraph({
+          children: parseInline(trimmed),
+          indent: { left: 360 }
+        })); i++; continue;
+      }
+      // Empty line
+      if (!trimmed) { docChildren.push(new Paragraph({ children: [new TextRun('')] })); i++; continue; }
+      // Regular paragraph
+      docChildren.push(new Paragraph({ children: parseInline(trimmed) }));
+      i++;
+    }
+
+    const doc = new Document({ sections: [{ children: docChildren }] });
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = '번역_검토_결과.docx'; a.click();
+    URL.revokeObjectURL(url);
+
+  } catch (err) {
+    alert(`DOCX 생성 오류: ${err.message}`);
+  } finally {
+    btn.textContent = origText; btn.disabled = false;
+  }
+}
 function flash(orig, msg) {
   document.querySelectorAll('.btn-action').forEach(b => {
     if (b.textContent === orig) { b.textContent = msg; setTimeout(() => b.textContent = orig, 2000); }
@@ -1101,15 +1536,41 @@ function openLightbox(img) {
   const lbImg = document.getElementById('lbImg');
   lbImg.src = img.src;
   lbImg.style.transform = rot ? `rotate(${rot}deg)` : '';
+  const card = document.getElementById('lbCard');
+  card.style.left = '50%';
+  card.style.top = '50%';
+  card.style.transform = 'translate(-50%, -50%)';
   document.getElementById('imgLightbox').classList.add('open');
-  document.body.style.overflow = 'hidden';
 }
-function closeLightbox(e) {
-  if (e && e.target.closest('#lbCard')) return;
+function closeLightbox() {
   document.getElementById('imgLightbox').classList.remove('open');
-  document.body.style.overflow = '';
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// ── Lightbox drag ──
+(function() {
+  let dragging = false, ox, oy, cx, cy;
+  document.getElementById('lbDragBar').addEventListener('mousedown', e => {
+    if (e.target.closest('#lbClose')) return;
+    const card = document.getElementById('lbCard');
+    const rect = card.getBoundingClientRect();
+    card.style.transform = '';
+    card.style.left = rect.left + 'px';
+    card.style.top = rect.top + 'px';
+    cx = rect.left; cy = rect.top;
+    ox = e.clientX; oy = e.clientY;
+    dragging = true;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const card = document.getElementById('lbCard');
+    cx += e.clientX - ox; cy += e.clientY - oy;
+    ox = e.clientX; oy = e.clientY;
+    card.style.left = cx + 'px'; card.style.top = cy + 'px';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
 
 // ═══════════════════════════════════════════════
 // Drawing Translation Tab
@@ -1185,6 +1646,7 @@ async function runDrawingExtraction() {
   const btn = document.getElementById('drawingBtn');
   btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> 도면 분석 중...';
   document.getElementById('drawingResultActions').style.display = 'none';
+  document.getElementById('drawingResultActionsBottom').style.display = 'none';
 
   try {
     showDrawingStatus('info', '⏳ 도면 PDF를 읽고 있습니다...');
@@ -1239,6 +1701,8 @@ async function runDrawingExtraction() {
 
     showDrawingStatus('success', `✅ 도면 번역 추출 완료 — 총 ${totalItems}개 항목`);
     document.getElementById('drawingResultActions').style.display = 'flex';
+    document.getElementById('drawingResultActionsBottom').style.display = 'flex';
+    if (drawingRefSpec) runTermVerify();
 
   } catch (err) {
     showDrawingStatus('error', `❌ 오류: ${err.message}`);
@@ -1347,9 +1811,11 @@ function updateFigureSection(sectionEl, pageNum, result) {
 
   let html = '<table class="drawing-table"><thead><tr>';
   html += header.map(h => `<th>${escHtml(h)}</th>`).join('');
+  html += '<th class="th-suggest">명세서 용어</th>';
   html += '</tr></thead><tbody>';
 
   const delBtn = `<td class="td-del"><button class="btn-row-del" onclick="this.closest('tr').remove()" title="행 삭제">✕</button></td>`;
+  const suggestTd = `<td class="td-suggest"></td>`;
 
   if (rows.length) {
     for (const row of rows) {
@@ -1357,7 +1823,7 @@ function updateFigureSection(sectionEl, pageNum, result) {
       html += Array.from({ length: colCount }, (_, i) =>
         `<td contenteditable="true" class="editable-cell" data-col="${i}" oninput="handleCellInput(this)">${escHtml((row[i] || '').trim())}</td>`
       ).join('');
-      html += delBtn + '</tr>';
+      html += suggestTd + delBtn + '</tr>';
     }
   }
   // Always add an empty row for manual input
@@ -1365,7 +1831,7 @@ function updateFigureSection(sectionEl, pageNum, result) {
   html += Array.from({ length: colCount }, (_, i) =>
     `<td contenteditable="true" class="editable-cell" data-col="${i}" data-ph="${escHtml(placeholders[i] || '')}" oninput="handleCellInput(this)">${i === 0 ? escHtml(fig) : ''}</td>`
   ).join('');
-  html += delBtn + '</tr></tbody></table>';
+  html += suggestTd + delBtn + '</tr></tbody></table>';
   wrap.innerHTML = html;
 }
 
@@ -1395,7 +1861,7 @@ function handleCellInput(cell) {
     const hasSomeContent = [...row.querySelectorAll('td')].some(td => td.textContent.trim());
     if (hasSomeContent) {
       const fig = row.dataset.fig || '';
-      const colCount = row.querySelectorAll('td').length;
+      const colCount = row.querySelectorAll('td.editable-cell').length;
       const placeholders = ['도면번호', '도면부호', '국문 텍스트', '영문 번역'];
       const newRow = document.createElement('tr');
       newRow.className = 'empty-row';
@@ -1410,6 +1876,9 @@ function handleCellInput(cell) {
         if (i === 0) td.textContent = fig;
         newRow.appendChild(td);
       }
+      const suggestTd = document.createElement('td');
+      suggestTd.className = 'td-suggest';
+      newRow.appendChild(suggestTd);
       const delTd = document.createElement('td');
       delTd.className = 'td-del';
       delTd.innerHTML = '<button class="btn-row-del" onclick="this.closest(\'tr\').remove()" title="행 삭제">✕</button>';
@@ -1621,11 +2090,11 @@ function getDrawingTsvFromDom() {
   const firstTable = document.querySelector('.fig-table-area table');
   if (!firstTable) return drawingTsvData;
 
-  const headers = [...firstTable.querySelectorAll('thead th')].map(th => th.textContent.trim());
+  const headers = [...firstTable.querySelectorAll('thead th:not(.th-suggest)')].map(th => th.textContent.trim());
   const lines = [headers.join('\t')];
 
   document.querySelectorAll('.fig-table-area tbody tr').forEach(tr => {
-    const cells = [...tr.querySelectorAll('td:not(.td-del)')].map(td => td.textContent.trim());
+    const cells = [...tr.querySelectorAll('td:not(.td-del):not(.td-suggest)')].map(td => td.textContent.trim());
     if (cells[2]) lines.push(cells.join('\t'));
   });
 
@@ -1720,27 +2189,35 @@ async function runTermVerify() {
   // Collect all (Korean, English) pairs
   const items = [];
   document.querySelectorAll('.fig-table-area tbody tr').forEach(tr => {
-    const cells = [...tr.querySelectorAll('td:not(.td-del)')];
+    const cells = [...tr.querySelectorAll('td:not(.td-del):not(.td-suggest)')];
     if (cells.length < 4) return;
     const ko = cells[2]?.textContent.trim() || '';
     const en = cells[3]?.textContent.trim() || '';
-    if (ko && en) items.push({ cells, ko, en });
+    if (ko && en) items.push({ cells, ko, en, suggestCell: tr.querySelector('.td-suggest') });
   });
 
   if (!items.length) { alert('검증할 항목이 없습니다.'); return; }
 
   const btn = document.getElementById('verifyBtn');
+  const btnBottom = document.getElementById('verifyBtnBottom');
   btn.disabled = true; btn.textContent = '⏳ 검증 중...';
+  if (btnBottom) { btnBottom.disabled = true; btnBottom.textContent = '⏳ 검증 중...'; }
   showDrawingStatus('info', `⏳ ${items.length}개 용어를 명세서와 대조 중...`);
 
   const termList = items.map((it, i) => `${i + 1}. 국문: ${it.ko} | 영문: ${it.en}`).join('\n');
-  const sysPrompt = `특허 번역 검토 전문가입니다. 도면 번역 용어들이 아래 명세서의 영문 용어와 일치하는지 확인하세요.
+  const sysPrompt = `특허 번역 검토 전문가입니다. 영문 번역 용어가 명세서의 영문 표현과 실질적으로 동일한지 확인하세요.
+
+비교 규칙:
+- 대소문자 차이(예: "Frame" vs "frame")는 동일로 간주
+- 관사(a/an/the) 유무 차이는 동일로 간주
+- 단복수, 하이픈 유무 등 사소한 차이는 동일로 간주
+- 실제 단어 자체가 다를 때만 DIFF로 판정
 
 각 항목에 대해 다음 중 하나를 출력하세요:
-- OK: 명세서 표현과 동일하거나 충분히 일치
-- DIFF|수정제안: 명세서에 다른 표현이 있을 경우 (예: "DIFF|connecting member")
+- OK|명세서표현: 명세서 표현과 동일하거나 충분히 일치 (예: "OK|connecting member")
+- DIFF|수정제안: 실제 단어가 다를 경우 (예: "DIFF|connecting member")
 
-번호별로 한 줄씩 출력하세요 (예: "1. OK" 또는 "2. DIFF|support bracket").
+번호별로 한 줄씩 출력하세요 (예: "1. OK|frame portion" 또는 "2. DIFF|support bracket").
 
 [명세서]
 ${refSpec.substring(0, 5000)}`;
@@ -1772,33 +2249,64 @@ ${refSpec.substring(0, 5000)}`;
       const item = items[idx];
       if (!item) return;
       const enCell = item.cells[3];
+      const suggestCell = item.suggestCell;
       // Clear previous marks
       enCell.style.background = '';
+      enCell.style.outline = '';
       enCell.title = '';
+      if (suggestCell) suggestCell.innerHTML = '';
       if (verdict.startsWith('DIFF')) {
         const suggestion = verdict.split('|')[1]?.trim() || '';
         enCell.style.background = '#fef9c3';
         enCell.style.outline = '2px solid #fbbf24';
-        enCell.title = suggestion ? `명세서 표현: "${suggestion}"` : '명세서와 불일치';
-        if (suggestion) {
-          enCell.dataset.suggestion = suggestion;
+        if (suggestion && suggestCell) {
+          const btn = document.createElement('button');
+          btn.className = 'btn-suggest';
+          btn.textContent = suggestion;
+          btn.title = '클릭하면 영문 용어를 교체합니다';
+          btn.dataset.suggestion = suggestion;
+          btn.onclick = () => applySuggestion(btn);
+          suggestCell.appendChild(btn);
         }
         diffCount++;
       } else {
         enCell.style.outline = '2px solid #86efac';
         setTimeout(() => { if (enCell.style.outline === '2px solid rgb(134, 239, 172)') enCell.style.outline = ''; }, 2500);
+        if (suggestCell) {
+          const matchedTerm = verdict.split('|')[1]?.trim() || item.en;
+          const span = document.createElement('span');
+          span.className = 'suggest-match';
+          span.textContent = '✓ ' + matchedTerm;
+          suggestCell.innerHTML = '';
+          suggestCell.appendChild(span);
+        }
       }
     });
 
     const msg = diffCount
-      ? `⚠️ ${diffCount}개 항목이 명세서 표현과 다릅니다 (노란색 하이라이트). 셀에 마우스를 올리면 제안 표현이 표시됩니다.`
+      ? `⚠️ ${diffCount}개 항목이 명세서 표현과 다릅니다. 오른쪽 <strong>명세서 용어</strong> 버튼을 클릭하면 영문 용어가 교체됩니다.`
       : '✅ 모든 용어가 명세서 표현과 일치합니다.';
     showDrawingStatus(diffCount ? 'warning' : 'success', msg);
   } catch (err) {
     showDrawingStatus('error', `❌ 오류: ${err.message}`);
   } finally {
     btn.disabled = false; btn.textContent = '🔎 용어 검증';
+    if (btnBottom) { btnBottom.disabled = false; btnBottom.textContent = '🔎 용어 검증'; }
   }
+}
+
+function applySuggestion(btn) {
+  const suggestion = btn.dataset.suggestion;
+  const row = btn.closest('tr');
+  const enCell = row.querySelector('td[data-col="3"]');
+  if (enCell && suggestion) {
+    enCell.textContent = suggestion;
+    enCell.style.background = '#dcfce7';
+    enCell.style.outline = '';
+    setTimeout(() => { enCell.style.background = ''; }, 1800);
+  }
+  const suggestCell = btn.closest('.td-suggest');
+  if (suggestCell) suggestCell.innerHTML = '<span class="suggest-applied">✓ 적용됨</span>';
 }
 
 function showDrawingStatus(type, msg) {
@@ -1870,9 +2378,9 @@ async function downloadDrawingDocx() {
         heading: HeadingLevel.HEADING_2
       }));
 
-      const headerCells = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+      const headerCells = [...table.querySelectorAll('thead th:not(.th-suggest)')].map(th => th.textContent.trim());
       const bodyRows = [...table.querySelectorAll('tbody tr')]
-        .map(tr => [...tr.querySelectorAll('td:not(.td-del)')].map(td => td.textContent.trim()))
+        .map(tr => [...tr.querySelectorAll('td:not(.td-del):not(.td-suggest)')].map(td => td.textContent.trim()))
         .filter(row => row[2]);
 
       if (bodyRows.length) {
@@ -1909,6 +2417,337 @@ async function downloadDrawingDocx() {
   } finally {
     btn.textContent = origText; btn.disabled = false;
   }
+}
+
+// ═══════════════════════════════════════════════
+// 명세서 비교 (Spec Compare)
+// ═══════════════════════════════════════════════
+let specCompareRunning = false;
+
+function switchResultTab(name) {
+  document.getElementById('rtab-review').classList.toggle('active', name === 'review');
+  document.getElementById('rtab-spec').classList.toggle('active', name === 'spec');
+  const isReview = name === 'review';
+  document.getElementById('resultsContent').style.display = isReview ? '' : 'none';
+  document.getElementById('specComparePanel').style.display = isReview ? 'none' : 'block';
+  document.getElementById('resultActions').style.display = isReview ? 'flex' : 'none';
+}
+
+async function runSpecCompare() {
+  if (specCompareRunning) return;
+  const enText = contents.en || '';
+  if (!enText) {
+    alert('영문 명세서가 로드되어 있지 않습니다.\n먼저 "영문 번역 명세서" 파일을 업로드해 주세요.'); return;
+  }
+  if (!resultMarkdown) {
+    alert('먼저 번역 검토를 실행해 주세요.'); return;
+  }
+  specCompareRunning = true;
+  const btn = document.getElementById('genSpecBtn');
+  btn.disabled = true; btn.textContent = '⏳ 생성 중...';
+  document.getElementById('specCompareContent').innerHTML =
+    '<div class="status-bar info">⏳ AI가 수정본을 생성하고 있습니다... (약 30~60초 소요)</div>';
+
+  try {
+    const sysPrompt = `당신은 특허 번역 교정 전문가입니다.
+주어진 검토 결과를 바탕으로, 영문 번역 명세서의 수정본을 생성해 주세요.
+
+규칙:
+- 검토 결과에서 지적된 문제를 정확히 수정하세요.
+- 수정이 필요 없는 줄은 원문과 완전히 동일하게 출력하세요. (한 글자도 바꾸지 마세요)
+- 명세서 전체를 처음부터 끝까지 빠짐없이 출력하세요.
+- 마크다운 코드블록 없이 텍스트만 출력하세요.`;
+
+    const reviewSummary = resultMarkdown.length > 10000
+      ? resultMarkdown.substring(0, 10000) + '\n...(이하 생략)'
+      : resultMarkdown;
+
+    const userMsg = `[영문 번역 명세서 원본]\n${enText}\n\n---\n\n[검토 결과]\n${reviewSummary}`;
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user',   content: userMsg }
+        ],
+        max_completion_tokens: 16384,
+        temperature: 0
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const revised = data.choices[0].message.content.trim();
+    const changedLines = renderSpecCompare(enText, revised);
+    // 변경된 줄이 있으면 자동으로 수정근거 로드
+    if (changedLines && changedLines.length > 0) {
+      loadChangeRationale(changedLines);
+    }
+    btn.textContent = '🔄 재생성';
+  } catch (err) {
+    document.getElementById('specCompareContent').innerHTML =
+      `<div class="status-bar error">❌ 오류: ${escHtml(err.message)}</div>`;
+    btn.textContent = '✨ 수정본 생성';
+  } finally {
+    specCompareRunning = false;
+    btn.disabled = false;
+  }
+}
+
+// LCS 기반 줄 단위 diff
+function diffLines(origLines, revLines) {
+  const m = origLines.length, n = revLines.length;
+  const MAX = 600;
+  const oL = origLines.slice(0, MAX), rL = revLines.slice(0, MAX);
+  const M = oL.length, N = rL.length;
+  const dp = new Int32Array((M + 1) * (N + 1));
+  for (let i = 1; i <= M; i++) {
+    for (let j = 1; j <= N; j++) {
+      dp[i * (N + 1) + j] = oL[i - 1] === rL[j - 1]
+        ? dp[(i - 1) * (N + 1) + (j - 1)] + 1
+        : Math.max(dp[(i - 1) * (N + 1) + j], dp[i * (N + 1) + (j - 1)]);
+    }
+  }
+  const result = [];
+  let i = M, j = N;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oL[i - 1] === rL[j - 1]) {
+      result.unshift({ type: 'same', text: oL[i - 1] }); i--; j--;
+    } else if (j > 0 && (i === 0 || dp[(i - 1) * (N + 1) + j] <= dp[i * (N + 1) + (j - 1)])) {
+      result.unshift({ type: 'ins', text: rL[j - 1] }); j--;
+    } else {
+      result.unshift({ type: 'del', text: oL[i - 1] }); i--;
+    }
+  }
+  return result;
+}
+
+// changedLineMap: { lineNum(원본) → { orig, corr, reason } }
+const changedLineMap = {};
+
+function renderSpecCompare(origText, revText) {
+  const origLines = origText.split('\n');
+  const revLines  = revText.split('\n');
+  const diff = diffLines(origLines, revLines);
+
+  // 정렬된 좌/우 배열 구성 (spacer로 높이 맞춤)
+  const left = [], right = [];
+  const changedInfoList = []; // {origLineNum, origText, revText}
+  let ln = 0, rn = 0;
+  for (let k = 0; k < diff.length; k++) {
+    const d = diff[k];
+    if (d.type === 'same') {
+      ln++; rn++;
+      left.push({ type: 'same', text: d.text, num: ln });
+      right.push({ type: 'same', text: d.text, num: rn });
+    } else if (d.type === 'del') {
+      // del 바로 뒤에 ins가 오면 "변경된 줄"로 페어링
+      const next = diff[k + 1];
+      if (next && next.type === 'ins') {
+        ln++; rn++; k++;
+        left.push({ type: 'changed', text: d.text, num: ln });
+        right.push({ type: 'new', text: next.text, num: rn });
+        changedInfoList.push({ origLineNum: ln, origText: d.text, revText: next.text });
+      } else {
+        ln++;
+        left.push({ type: 'del', text: d.text, num: ln });
+        right.push({ type: 'spacer', text: '', num: '' });
+        changedInfoList.push({ origLineNum: ln, origText: d.text, revText: '' });
+      }
+    } else { // ins (unpaired)
+      rn++;
+      left.push({ type: 'spacer', text: '', num: '' });
+      right.push({ type: 'new', text: d.text, num: rn });
+    }
+  }
+
+  const changeCount = changedInfoList.length;
+  const badge = changeCount
+    ? `<span class="spec-compare-badge badge-changes">⚠ ${changeCount}줄 수정필요</span>`
+    : `<span class="spec-compare-badge badge-ok">✅ 변경없음</span>`;
+
+  function buildPane(lines, isLeft) {
+    return lines.map(line => {
+      let cls = 'spec-line';
+      if      (line.type === 'changed') cls += ' line-changed';
+      else if (line.type === 'del')     cls += ' line-del';
+      else if (line.type === 'new')     cls += ' line-new';
+      else if (line.type === 'spacer')  cls += ' line-spacer';
+      const numHtml = line.num !== '' ? escHtml(String(line.num)) : '';
+      const clickAttr = isLeft && (line.type === 'changed' || line.type === 'del')
+        ? ` data-ln="${line.num}" onclick="onSpecLineClick(event, ${line.num})"`
+        : '';
+      // 오른쪽 패널: spacer 제외하고 contenteditable
+      const editAttr = !isLeft && line.type !== 'spacer'
+        ? ' contenteditable="true" data-rev="1"'
+        : '';
+      return `<div class="${cls}"${clickAttr}><div class="spec-line-num">${numHtml}</div><div class="spec-line-text"${editAttr}>${escHtml(line.text)}</div></div>`;
+    }).join('');
+  }
+
+  const truncNote = origLines.length > 600 || revLines.length > 600
+    ? '<div style="margin-top:0.5rem;font-size:0.74rem;color:var(--text-muted);text-align:center">* 최대 600줄까지 표시됩니다.</div>'
+    : '';
+
+  const rationale_note = changeCount > 0
+    ? '<div style="margin-bottom:0.5rem;font-size:0.74rem;color:#92400e;background:#fef9c3;padding:0.3rem 0.625rem;border-radius:0.375rem;border:1px solid #fde68a">💡 <strong>노란 줄</strong>을 클릭하면 수정 근거를 볼 수 있습니다.</div>'
+    : '';
+
+  document.getElementById('specCompareContent').innerHTML = `
+    ${rationale_note}
+    <div class="spec-compare-wrap" id="specPaneWrap">
+      <div class="spec-pane original" id="specPaneLeft">
+        <div class="spec-pane-header">📄 원본 (영문 번역 명세서)&nbsp;${badge}</div>
+        ${buildPane(left, true)}
+      </div>
+      <div class="spec-pane revised" id="specPaneRight">
+        <div class="spec-pane-header">✏️ 수정본 (직접 편집 가능)
+          <button class="btn-dl-revised" onclick="downloadRevisedSpec()">⬇ 저장</button>
+        </div>
+        ${buildPane(right, false)}
+      </div>
+    </div>${truncNote}`;
+
+  // 동기 스크롤
+  const pL = document.getElementById('specPaneLeft');
+  const pR = document.getElementById('specPaneRight');
+  let syncing = false;
+  pL.addEventListener('scroll', () => { if (!syncing) { syncing = true; pR.scrollTop = pL.scrollTop; syncing = false; } });
+  pR.addEventListener('scroll', () => { if (!syncing) { syncing = true; pL.scrollTop = pR.scrollTop; syncing = false; } });
+
+  // 편집 감지 → user-edited 클래스 추가
+  pR.addEventListener('input', e => {
+    const cell = e.target.closest('[data-rev]');
+    if (cell) cell.closest('.spec-line')?.classList.add('user-edited');
+  });
+
+  return changedInfoList;
+}
+
+// ── 수정근거 로드 (변경된 줄 목록 → AI에서 이유 추출) ──
+async function loadChangeRationale(changedList) {
+  if (!changedList || changedList.length === 0) return;
+  // changedLineMap 초기화
+  Object.keys(changedLineMap).forEach(k => delete changedLineMap[k]);
+  changedList.forEach(c => { changedLineMap[c.origLineNum] = { orig: c.origText, corr: c.revText, reason: null }; });
+
+  const linesSummary = changedList.slice(0, 30).map((c, i) =>
+    `${i + 1}. 줄 ${c.origLineNum}: [원본] ${c.origText.substring(0, 100)}${c.origText.length > 100 ? '...' : ''}\n   [수정] ${c.revText.substring(0, 100)}${c.revText.length > 100 ? '...' : ''}`
+  ).join('\n');
+
+  const reviewSummary = resultMarkdown.length > 8000
+    ? resultMarkdown.substring(0, 8000) + '\n...(이하 생략)'
+    : resultMarkdown;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+      body: JSON.stringify({
+        model: API_MODEL,
+        messages: [
+          { role: 'system', content: '특허 번역 검토 전문가입니다. 검토 결과를 참고하여, 각 수정된 줄의 수정 근거를 간결하게 한국어로 설명하세요.\n출력: JSON 배열 [{ln: 줄번호, reason: "수정근거"}] 형식만 출력하세요. 코드블록 없이 JSON만.' },
+          { role: 'user', content: `[수정된 줄 목록]\n${linesSummary}\n\n---\n\n[검토 결과 (참고)]\n${reviewSummary}` }
+        ],
+        max_completion_tokens: 2048,
+        temperature: 0
+      })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    let raw = data.choices[0].message.content.trim()
+      .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
+    const items = JSON.parse(raw);
+    if (!Array.isArray(items)) return;
+    // changedLineMap에 reason 채우기
+    items.forEach(item => {
+      if (changedLineMap[item.ln]) changedLineMap[item.ln].reason = item.reason;
+      // ln이 없을 때 원본 줄 번호 순서대로 매칭
+    });
+    // 줄 번호 순서로 changedList와 매칭 (ln이 index인 경우 보정)
+    if (items.length === changedList.length && items[0]?.ln !== changedList[0]?.origLineNum) {
+      items.forEach((item, i) => {
+        const c = changedList[i];
+        if (c && changedLineMap[c.origLineNum]) changedLineMap[c.origLineNum].reason = item.reason;
+      });
+    }
+    // 줄 요소에 has-rationale 클래스 추가
+    document.querySelectorAll('#specPaneLeft .spec-line[data-ln]').forEach(el => {
+      const ln = parseInt(el.dataset.ln);
+      if (changedLineMap[ln]?.reason) el.classList.add('has-rationale');
+    });
+  } catch (e) { /* 오류 무시 — 팝오버는 "아직 없음" 상태로 표시 */ }
+}
+
+// ── 줄 클릭 → 팝오버 표시 ──
+function onSpecLineClick(event, lineNum) {
+  event.stopPropagation();
+  const info = changedLineMap[lineNum];
+  const pop = document.getElementById('rationalePopover');
+  document.getElementById('rpTitle').textContent = `📋 ${lineNum}번 줄 · 수정 근거`;
+  const origEl = document.getElementById('rpOrig');
+  const corrEl = document.getElementById('rpCorr');
+  const reasonEl = document.getElementById('rpReason');
+
+  if (info?.orig) { origEl.textContent = info.orig; origEl.style.display = 'block'; } else origEl.style.display = 'none';
+  if (info?.corr) { corrEl.textContent = info.corr; corrEl.style.display = 'block'; } else corrEl.style.display = 'none';
+
+  if (info?.reason) {
+    reasonEl.innerHTML = `<strong>수정 근거:</strong> ${escHtml(info.reason)}`;
+  } else {
+    reasonEl.innerHTML = '<span class="rp-loading">⏳ 수정 근거를 불러오는 중입니다...</span>';
+  }
+
+  // 팝오버 위치: 클릭 위치 기준
+  const rect = event.currentTarget.getBoundingClientRect();
+  let top = rect.top + window.scrollY;
+  let left = rect.right + 12;
+  pop.style.display = 'block';
+  pop.classList.add('open');
+  // 화면 밖으로 나가면 왼쪽에 배치
+  if (left + 430 > window.innerWidth) left = rect.left - 430;
+  if (left < 8) left = 8;
+  if (top + 300 > window.innerHeight + window.scrollY) top = window.innerHeight + window.scrollY - 310;
+  pop.style.top  = top + 'px';
+  pop.style.left = left + 'px';
+}
+
+function closeRationalePopover() {
+  document.getElementById('rationalePopover').classList.remove('open');
+  document.getElementById('rationalePopover').style.display = 'none';
+}
+
+// 팝오버 외부 클릭 시 닫기
+document.addEventListener('click', e => {
+  const pop = document.getElementById('rationalePopover');
+  if (pop.classList.contains('open') && !pop.contains(e.target)) closeRationalePopover();
+});
+
+// ── 수정본 다운로드 ──
+function downloadRevisedSpec() {
+  const pR = document.getElementById('specPaneRight');
+  if (!pR) { alert('수정본이 없습니다. 먼저 수정본을 생성해 주세요.'); return; }
+  const lines = [];
+  pR.querySelectorAll('.spec-line').forEach(row => {
+    if (row.classList.contains('line-spacer')) return; // 정렬용 공백 줄 제외
+    const cell = row.querySelector('.spec-line-text');
+    lines.push(cell ? cell.textContent : '');
+  });
+  const text = lines.join('\n');
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const baseName = (document.getElementById('fname-en').textContent || '영문명세서')
+    .replace(/^✓\s*/, '').replace(/\.[^.]+$/, '');
+  a.download = `${baseName}_수정본.md`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 </script>
 </body>
