@@ -2537,6 +2537,7 @@ async function downloadDrawingDocx() {
 // 명세서 비교 (Spec Compare)
 // ═══════════════════════════════════════════════
 let specCompareRunning = false;
+let reviewItemsCache = [];  // parseReviewItems 결과 캐시 (모달용)
 
 function switchResultTab(name) {
   document.getElementById('rtab-review').classList.toggle('active', name === 'review');
@@ -2741,6 +2742,7 @@ async function runSpecCompare() {
   btn.disabled = true; btn.textContent = '⏳ 분석 중...';
 
   const reviewItems = parseReviewItems(resultMarkdown);
+  reviewItemsCache = reviewItems;  // 모달용 캐시
   const total = reviewItems.length;
 
   if (total === 0) {
@@ -2889,7 +2891,10 @@ function renderSpecTable(items, totalItems = 0, failCount = 0) {
     const dupWarn = dupLines.has(item.line)
       ? `<span title="같은 줄에 복수 수정 — 저장 시 마지막 항목 적용" style="color:#f59e0b;margin-left:0.25rem">⚠</span>` : '';
     return `<tr data-idx="${idx}">
-      <td class="td-ln">${item.itemNo}${dupWarn}<br><span style="color:#cbd5e1;font-size:0.62rem">L.${item.line}</span></td>
+      <td class="td-ln" style="cursor:pointer" onclick="showOrigReviewItem(${idx})" title="클릭하여 원본 검토 항목 보기">
+        <span style="text-decoration:underline dotted;color:#3b82f6">${item.itemNo}</span>${dupWarn}<br>
+        <span style="color:#cbd5e1;font-size:0.62rem">L.${item.line}</span>
+      </td>
       <td class="td-orig">${origHtml}</td>
       <td class="td-rev" contenteditable="true" data-idx="${idx}">${revHtml}</td>
       <td class="td-why">${catLabel}${escHtml(reasonText)}</td>
@@ -3018,6 +3023,42 @@ function toggleRevisionApply(idx, cb) {
   if (specRevisions[idx]) specRevisions[idx].apply = cb.checked;
   const row = cb.closest('tr');
   row.classList.toggle('row-skipped', !cb.checked);
+}
+
+function showOrigReviewItem(idx) {
+  const rev  = specRevisions[idx];
+  const item = rev ? reviewItemsCache[rev.itemNo - 1] : null;
+  if (!item) return;
+
+  const field = (label, val) => val
+    ? `<tr><td style="font-weight:700;white-space:nowrap;padding:0.35rem 0.6rem;
+         border-bottom:1px solid #f1f5f9;color:#475569;font-size:0.75rem;width:7rem">${label}</td>
+       <td style="padding:0.35rem 0.6rem;border-bottom:1px solid #f1f5f9;
+         font-size:0.78rem;line-height:1.6">${escHtml(val)}</td></tr>`
+    : '';
+
+  const secLabel = (item.section || '').match(/Ⅱ\[\d+\][^\n]*/)?.[0] || item.section || '';
+  const tableHtml = `<table style="width:100%;border-collapse:collapse">
+    ${field('📍 위치',    item.location)}
+    ${field('📄 원문 인용', item.origText)}
+    ${field('🔍 문제 내용', item.problem)}
+    ${field('✅ 수정 제안', item.suggestion)}
+  </table>`;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'targets-overlay';
+  overlay.innerHTML = `
+    <div class="targets-modal">
+      <div class="targets-modal-header">
+        📋 원본 검토 항목 #${rev.itemNo}
+        <span style="font-size:0.7rem;color:#94a3b8;margin-left:0.5rem">${escHtml(secLabel)}</span>
+        <button onclick="this.closest('.targets-overlay').remove()"
+          style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#94a3b8">✕</button>
+      </div>
+      <div class="targets-modal-body" style="padding:0.5rem">${tableHtml}</div>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 // ── 수정본 다운로드 (원문에 수정사항 적용 후 전체 저장) ──
