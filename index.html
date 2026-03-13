@@ -1394,9 +1394,22 @@ function addItemNumbers(md) {
   let counter = 0;
   let inII = false;
   let prevWasTable = false;
-  for (const line of lines) {
-    if (/={6,}/.test(line)) inII = false;
-    if (/Ⅱ\[\d+\]/.test(line)) inII = true;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // 섹션 헤더 블록 감지: ====\nLABEL\n==== 패턴
+    // 첫 번째 ====에서 lookahead로 레이블 확인, inII 결정
+    if (/={6,}/.test(line.trim())) {
+      const labelLine = (lines[i + 1] || '').trim();
+      const nextSep   = (lines[i + 2] || '').trim();
+      if (labelLine && /={6,}/.test(nextSep)) {
+        // 3줄 섹션 헤더의 첫 번째 === — 레이블로 inII 결정
+        inII = /Ⅱ\[\d+\]/.test(labelLine);
+        prevWasTable = false;
+      }
+      // 두 번째 === 는 위 조건에 해당 안 하므로 inII 변경 없음
+      result.push(line);
+      continue;
+    }
     const isTableLine = line.trim().startsWith('|');
     if (inII && isTableLine && !prevWasTable) {
       counter++;
