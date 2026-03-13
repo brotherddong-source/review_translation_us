@@ -646,6 +646,8 @@
     }
     .spec-file-btn:hover { border-color: var(--primary); color: var(--primary); }
     .spec-review-fname { color: var(--text-muted); font-size: 0.72rem; }
+    .spec-manual-row { transition: background 0.15s, border-color 0.15s; border-radius: 0.375rem; padding: 0.25rem 0.375rem; }
+    .spec-manual-row.drag-over { background: #eff6ff; outline: 2px dashed var(--primary); }
     .spec-gen-bar {
       display: flex; align-items: center; gap: 0.875rem;
       padding: 0.75rem; background: var(--bg); border-radius: 0.5rem;
@@ -878,13 +880,16 @@
           <div style="flex:1;min-width:0">
             <p style="margin-bottom:0.5rem">검토 결과 <strong>Ⅱ파트(번역 품질)</strong>에서 지적된 문장을 AI가 직접 수정합니다.<br>
                원문 · 수정안 · 수정근거(검토 내용)를 3단으로 한눈에 확인하세요.</p>
-            <div class="spec-manual-row">
+            <div class="spec-manual-row" id="specDropZone"
+                 ondragover="onSpecDropZoneDragOver(event)"
+                 ondragleave="onSpecDropZoneDragLeave(event)"
+                 ondrop="onSpecDropZoneDrop(event)">
               <span class="spec-manual-label">검토결과 파일</span>
               <label class="spec-file-btn">
                 📂 파일 선택
                 <input type="file" accept=".md,.txt" style="display:none" onchange="onSpecReviewFileLoad(event)">
               </label>
-              <span class="spec-review-fname" id="specReviewFname">검토 실행 후 자동 로드됨</span>
+              <span class="spec-review-fname" id="specReviewFname">검토 실행 후 자동 로드됨 · 또는 여기에 드래그</span>
             </div>
           </div>
           <button class="btn-gen-spec" id="genSpecBtn" onclick="runSpecCompare()">✨ 수정본 생성</button>
@@ -2419,8 +2424,7 @@ function switchResultTab(name) {
 // 수정 결과 저장 (다운로드용): [{line, original, revised, reason}]
 let specRevisions = [];
 
-function onSpecReviewFileLoad(e) {
-  const file = e.target.files[0];
+function loadSpecReviewFile(file) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
@@ -2429,7 +2433,22 @@ function onSpecReviewFileLoad(e) {
     document.getElementById('specReviewFname').style.color = 'var(--success)';
   };
   reader.readAsText(file);
+}
+function onSpecReviewFileLoad(e) {
+  loadSpecReviewFile(e.target.files[0]);
   e.target.value = '';
+}
+function onSpecDropZoneDragOver(e) {
+  e.preventDefault();
+  document.getElementById('specDropZone').classList.add('drag-over');
+}
+function onSpecDropZoneDragLeave(e) {
+  document.getElementById('specDropZone').classList.remove('drag-over');
+}
+function onSpecDropZoneDrop(e) {
+  e.preventDefault();
+  document.getElementById('specDropZone').classList.remove('drag-over');
+  loadSpecReviewFile(e.dataTransfer.files[0]);
 }
 
 // Ⅱ파트 검토 결과 추출
