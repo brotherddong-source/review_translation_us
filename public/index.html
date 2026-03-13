@@ -646,73 +646,76 @@
     }
     .btn-gen-spec:hover:not(:disabled) { background: var(--primary-dark); }
     .btn-gen-spec:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
-    .spec-compare-wrap {
-      display: grid; grid-template-columns: 1fr 1fr;
+    /* ── Spec Table (3-column) ── */
+    .spec-table-wrap {
       border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;
+      overflow-x: auto;
     }
-    .spec-pane { overflow-y: auto; max-height: 72vh; }
-    .spec-pane.original { border-right: 1px solid var(--border); }
-    .spec-pane-header {
-      padding: 0.4rem 0.75rem; font-size: 0.7rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      position: sticky; top: 0; z-index: 1;
-      display: flex; align-items: center; gap: 0.5rem;
+    .spec-table {
+      width: 100%; border-collapse: collapse; font-size: 0.78rem;
+      font-family: 'Segoe UI', sans-serif;
     }
-    .spec-pane.original .spec-pane-header { background: #fff7ed; color: #92400e; border-bottom: 1px solid #fed7aa; }
-    .spec-pane.revised  .spec-pane-header { background: #f0fdf4; color: #15803d; border-bottom: 1px solid #bbf7d0; }
-    .spec-line { display: flex; align-items: stretch; min-height: 1.6rem; border-bottom: 1px solid #f1f5f9; }
-    .spec-line-num {
-      width: 2.75rem; text-align: right; padding: 0.18rem 0.4rem;
-      font-size: 0.67rem; color: #94a3b8; flex-shrink: 0; user-select: none;
-      background: #fafafa; border-right: 1px solid var(--border);
-      line-height: 1.75; font-family: monospace;
+    .spec-table thead tr {
+      position: sticky; top: 0; z-index: 2;
     }
-    .spec-line-text {
-      flex: 1; padding: 0.18rem 0.5rem;
-      font-family: 'Cascadia Code', 'Consolas', monospace;
-      font-size: 0.74rem; white-space: pre-wrap; word-break: break-word;
-      line-height: 1.75; color: var(--text);
+    .spec-table th {
+      padding: 0.45rem 0.75rem; font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
     }
-    /* 원본 — 수정 필요 줄 (노란 하이라이트) */
-    .spec-line.line-changed .spec-line-num { background: #fef3c7 !important; }
-    .spec-line.line-changed .spec-line-text { background: #fefce8; color: #78350f; }
-    /* 원본 — 삭제된 줄 */
-    .spec-line.line-del .spec-line-num { background: #fef2f2 !important; }
-    .spec-line.line-del .spec-line-text { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
-    /* 수정본 — 추가/수정된 줄 */
-    .spec-line.line-new .spec-line-num { background: #dcfce7 !important; }
-    .spec-line.line-new .spec-line-text { background: #f0fdf4; color: #14532d; font-weight: 500; }
-    /* 정렬용 공백 줄 */
-    .spec-line.line-spacer .spec-line-text { background: #f8fafc; }
-    .spec-line.line-spacer .spec-line-num  { background: #f8fafc; }
-    .spec-compare-badge {
+    .spec-table th.th-ln   { background: #f1f5f9; color: #64748b; width: 2.5rem; text-align: center; border-right: 1px solid var(--border); }
+    .spec-table th.th-orig { background: #fff7ed; color: #92400e; width: 34%; border-right: 1px solid var(--border); }
+    .spec-table th.th-rev  { background: #f0fdf4; color: #15803d; width: 34%; border-right: 1px solid var(--border); }
+    .spec-table th.th-why  { background: #eff6ff; color: #1d4ed8; }
+    .spec-table td {
+      padding: 0.4rem 0.625rem; vertical-align: top;
+      border-bottom: 1px solid #f1f5f9; line-height: 1.65;
+      word-break: break-word;
+    }
+    .spec-table tr:last-child td { border-bottom: none; }
+    .spec-table tr:hover td { background: #fafafa !important; }
+    .spec-table .td-ln {
+      text-align: center; font-size: 0.67rem; color: #94a3b8;
+      font-family: monospace; background: #fafafa;
+      border-right: 1px solid var(--border); white-space: nowrap;
+    }
+    .spec-table .td-orig {
+      font-family: 'Cascadia Code','Consolas',monospace; font-size: 0.73rem;
+      background: #fefce8; color: #78350f;
+      border-right: 1px solid #fde68a; white-space: pre-wrap;
+    }
+    .spec-table .td-rev {
+      font-family: 'Cascadia Code','Consolas',monospace; font-size: 0.73rem;
+      background: #f0fdf4; color: #14532d; font-weight: 500;
+      border-right: 1px solid #bbf7d0; white-space: pre-wrap;
+      outline: none;
+    }
+    .spec-table .td-rev:focus { background: #eff6ff !important; box-shadow: inset 0 0 0 2px #93c5fd; }
+    .spec-table tr.row-edited .td-rev { background: #faf5ff !important; color: #4c1d95 !important; }
+    .spec-table .td-why {
+      font-size: 0.75rem; color: #1e3a5f; line-height: 1.6;
+    }
+    .spec-table .td-why .why-cat {
+      display: inline-block; font-size: 0.65rem; font-weight: 700;
+      background: #dbeafe; color: #1e40af; border-radius: 0.25rem;
+      padding: 0.05rem 0.35rem; margin-bottom: 0.2rem;
+    }
+    .spec-badge {
       display: inline-flex; align-items: center; gap: 0.2rem;
       font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.4rem;
-      border-radius: 0.25rem; text-transform: none; letter-spacing: 0;
+      border-radius: 0.25rem;
     }
-    .badge-changes { background: #fef3c7; color: #92400e; }
-    .badge-ok      { background: #dcfce7; color: #15803d; }
-
-    /* 클릭 가능한 수정 줄 */
-    .spec-line.line-changed,
-    .spec-line.line-del { cursor: pointer; }
-    .spec-line.line-changed:hover .spec-line-text,
-    .spec-line.line-del:hover .spec-line-text  { filter: brightness(0.95); }
-    .spec-line.has-rationale .spec-line-num::after {
-      content: '💬'; font-size: 0.6rem; display: block;
-      margin-top: 0.1rem; opacity: 0.7;
+    .spec-badge.changes { background: #fef3c7; color: #92400e; }
+    .spec-badge.ok      { background: #dcfce7; color: #15803d; }
+    /* 인라인 단어 diff 하이라이트 */
+    mark.diff-del {
+      background: #fee2e2; color: #991b1b;
+      text-decoration: line-through; border-radius: 0.2rem;
+      padding: 0 0.1rem;
     }
-
-    /* 수정본 직접 편집 */
-    .spec-line-text[contenteditable="true"] { cursor: text; outline: none; }
-    .spec-line-text[contenteditable="true"]:focus {
-      background: #eff6ff !important;
-      box-shadow: inset 0 0 0 2px #93c5fd;
+    mark.diff-ins {
+      background: #bbf7d0; color: #14532d;
+      border-radius: 0.2rem; padding: 0 0.1rem; font-weight: 600;
     }
-    .spec-line.user-edited .spec-line-num { background: #ede9fe !important; }
-    .spec-line.user-edited .spec-line-text { background: #faf5ff !important; color: #4c1d95; }
-
-    /* 수정본 헤더 다운로드 버튼 */
     .btn-dl-revised {
       margin-left: auto; flex-shrink: 0;
       padding: 0.15rem 0.5rem; font-size: 0.68rem; font-weight: 700;
@@ -721,49 +724,12 @@
       text-transform: none; letter-spacing: 0;
     }
     .btn-dl-revised:hover { background: #166534; }
-
-    /* ── 수정근거 팝오버 ── */
-    #rationalePopover {
-      position: fixed; z-index: 5000;
-      background: white; border: 1px solid var(--border);
-      border-radius: 0.625rem;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.04);
-      max-width: 420px; min-width: 280px;
-      font-size: 0.8125rem; display: none;
-      animation: fadeInUp 0.15s ease;
+    .spec-tbl-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0.75rem; background: #f8fafc;
+      border-bottom: 1px solid var(--border); font-size: 0.7rem;
+      font-weight: 700; color: var(--text-muted);
     }
-    @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
-    #rationalePopover.open { display: block; }
-    .rp-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0.5rem 0.75rem; background: #1e3a5f; color: white;
-      border-radius: 0.625rem 0.625rem 0 0; font-weight: 700; font-size: 0.78rem;
-    }
-    .rp-close {
-      background: none; border: none; color: rgba(255,255,255,0.7);
-      cursor: pointer; font-size: 1rem; line-height: 1; padding: 0.1rem 0.3rem;
-      border-radius: 0.25rem; transition: color 0.15s;
-    }
-    .rp-close:hover { color: white; }
-    .rp-body { padding: 0.625rem 0.75rem; }
-    .rp-orig {
-      font-size: 0.74rem; font-family: monospace;
-      background: #fefce8; border: 1px solid #fde68a; border-radius: 0.375rem;
-      padding: 0.35rem 0.5rem; margin-bottom: 0.5rem;
-      color: #78350f; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
-    }
-    .rp-corr {
-      font-size: 0.74rem; font-family: monospace;
-      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.375rem;
-      padding: 0.35rem 0.5rem; margin-bottom: 0.5rem;
-      color: #14532d; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
-    }
-    .rp-reason {
-      font-size: 0.78rem; color: var(--text); line-height: 1.65;
-      border-top: 1px solid var(--border); padding-top: 0.5rem;
-    }
-    .rp-reason strong { color: #1e3a5f; }
-    .rp-loading { color: var(--text-muted); font-size: 0.78rem; text-align: center; padding: 0.5rem 0; }
   </style>
 </head>
 <body>
@@ -895,8 +861,8 @@
       <!-- 명세서 비교 패널 -->
       <div id="specComparePanel">
         <div class="spec-gen-bar">
-          <p>검토 결과를 바탕으로 <strong>AI가 영문 명세서 수정본을 생성</strong>합니다.<br>
-             원본(좌)에서 수정 필요 줄이 하이라이팅되고, 수정본(우)과 줄 단위로 비교됩니다.</p>
+          <p>검토 결과 <strong>Ⅱ파트(번역 품질)</strong>에서 지적된 문장을 AI가 직접 수정합니다.<br>
+             원문 · 수정안 · 수정근거(검토 내용)를 3단으로 한눈에 확인하세요.</p>
           <button class="btn-gen-spec" id="genSpecBtn" onclick="runSpecCompare()">✨ 수정본 생성</button>
         </div>
         <div id="specCompareContent"></div>
@@ -1030,18 +996,7 @@
 
 <button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
-<!-- ── 수정근거 팝오버 ── -->
-<div id="rationalePopover">
-  <div class="rp-header">
-    <span id="rpTitle">📋 수정 근거</span>
-    <button class="rp-close" onclick="closeRationalePopover()">✕</button>
-  </div>
-  <div class="rp-body">
-    <div id="rpOrig" class="rp-orig" style="display:none"></div>
-    <div id="rpCorr" class="rp-corr" style="display:none"></div>
-    <div id="rpReason" class="rp-reason"></div>
-  </div>
-</div>
+
 
 <script>
 // ═══════════════════════════════════════════════
@@ -2433,6 +2388,15 @@ function switchResultTab(name) {
   document.getElementById('resultActions').style.display = isReview ? 'flex' : 'none';
 }
 
+// 수정 결과 저장 (다운로드용): [{line, original, revised, reason}]
+let specRevisions = [];
+
+// Ⅱ파트 검토 결과 추출
+function extractPart2(markdown) {
+  const m = markdown.match(/Ⅱ[.\s].[\s\S]*?(?=\n(?:Ⅲ|##\s*Ⅲ)|$)/);
+  return m ? m[0].trim() : markdown; // Ⅱ파트 없으면 전체 사용
+}
+
 async function runSpecCompare() {
   if (specCompareRunning) return;
   const enText = contents.en || '';
@@ -2446,23 +2410,35 @@ async function runSpecCompare() {
   const btn = document.getElementById('genSpecBtn');
   btn.disabled = true; btn.textContent = '⏳ 생성 중...';
   document.getElementById('specCompareContent').innerHTML =
-    '<div class="status-bar info">⏳ AI가 수정본을 생성하고 있습니다... (약 30~60초 소요)</div>';
+    '<div class="status-bar info">⏳ Ⅱ파트 지적사항을 분석하고 수정안을 생성하고 있습니다... (약 30~60초 소요)</div>';
 
   try {
+    const part2 = extractPart2(resultMarkdown);
+    const enLines = enText.split('\n');
+    const numberedSpec = enLines.map((l, i) => `[${i + 1}] ${l}`).join('\n');
+
     const sysPrompt = `당신은 특허 번역 교정 전문가입니다.
-주어진 검토 결과를 바탕으로, 영문 번역 명세서의 수정본을 생성해 주세요.
+아래 영문 번역 명세서(줄번호 포함)와 검토 결과(Ⅱ파트: 번역 품질 분석)를 바탕으로,
+수정이 필요한 줄을 찾아 수정안과 수정근거를 JSON으로 출력하세요.
 
 규칙:
-- 검토 결과에서 지적된 문제를 정확히 수정하세요.
-- 수정이 필요 없는 줄은 원문과 완전히 동일하게 출력하세요. (한 글자도 바꾸지 마세요)
-- 명세서 전체를 처음부터 끝까지 빠짐없이 출력하세요.
-- 마크다운 코드블록 없이 텍스트만 출력하세요.`;
+- 검토 결과 Ⅱ파트에서 명시적으로 지적된 문장/표현만 대상으로 합니다.
+- 수정안(revised)은 원문 줄의 내용을 빠짐없이 포함해야 합니다. 지적된 문제만 고치고 나머지는 원문 그대로 유지하세요. 내용을 압축하거나 생략하지 마세요.
+- 수정근거(reason)는 해당 검토 내용을 직접 인용하거나 요약해 한국어로 작성하세요. 어떤 카테고리(Ⅱ[1]~Ⅱ[4])인지 앞에 표시하세요.
+- 줄 번호(line)는 [숫자] 형식의 번호를 사용하세요.
+- 코드블록 없이 JSON 배열만 출력하세요.
 
-    const reviewSummary = resultMarkdown.length > 10000
-      ? resultMarkdown.substring(0, 10000) + '\n...(이하 생략)'
-      : resultMarkdown;
+출력 형식:
+[
+  {
+    "line": 줄번호(숫자),
+    "original": "원문 그대로",
+    "revised": "수정된 영문",
+    "reason": "Ⅱ[카테고리] 수정근거"
+  }
+]`;
 
-    const userMsg = `[영문 번역 명세서 원본]\n${enText}\n\n---\n\n[검토 결과]\n${reviewSummary}`;
+    const userMsg = `[영문 번역 명세서 (줄번호 포함)]\n${numberedSpec}\n\n---\n\n[검토 결과 Ⅱ파트]\n${part2}`;
 
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -2473,7 +2449,7 @@ async function runSpecCompare() {
           { role: 'system', content: sysPrompt },
           { role: 'user',   content: userMsg }
         ],
-        max_completion_tokens: 16384,
+        max_completion_tokens: 8192,
         temperature: 0
       })
     });
@@ -2482,12 +2458,12 @@ async function runSpecCompare() {
       throw new Error(err.error?.message || `HTTP ${res.status}`);
     }
     const data = await res.json();
-    const revised = data.choices[0].message.content.trim();
-    const changedLines = renderSpecCompare(enText, revised);
-    // 변경된 줄이 있으면 자동으로 수정근거 로드
-    if (changedLines && changedLines.length > 0) {
-      loadChangeRationale(changedLines);
-    }
+    let raw = data.choices[0].message.content.trim()
+      .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
+    const items = JSON.parse(raw);
+    if (!Array.isArray(items)) throw new Error('응답이 JSON 배열 형식이 아닙니다.');
+    specRevisions = items;
+    renderSpecTable(items);
     btn.textContent = '🔄 재생성';
   } catch (err) {
     document.getElementById('specCompareContent').innerHTML =
@@ -2499,253 +2475,128 @@ async function runSpecCompare() {
   }
 }
 
-// LCS 기반 줄 단위 diff
-function diffLines(origLines, revLines) {
-  const m = origLines.length, n = revLines.length;
-  const MAX = 600;
-  const oL = origLines.slice(0, MAX), rL = revLines.slice(0, MAX);
-  const M = oL.length, N = rL.length;
-  const dp = new Int32Array((M + 1) * (N + 1));
-  for (let i = 1; i <= M; i++) {
-    for (let j = 1; j <= N; j++) {
-      dp[i * (N + 1) + j] = oL[i - 1] === rL[j - 1]
-        ? dp[(i - 1) * (N + 1) + (j - 1)] + 1
-        : Math.max(dp[(i - 1) * (N + 1) + j], dp[i * (N + 1) + (j - 1)]);
-    }
+// 단어 단위 diff → { origHtml, revHtml }
+function wordDiff(origText, revText) {
+  const tokenize = s => s.match(/[^\s]+|\s+/g) || [''];
+  const oTok = tokenize(origText);
+  const rTok = tokenize(revText);
+  const M = oTok.length, N = rTok.length;
+  // LCS 너무 길면 전체 교체로 처리
+  if (M * N > 40000) {
+    return {
+      origHtml: `<mark class="diff-del">${escHtml(origText)}</mark>`,
+      revHtml:  `<mark class="diff-ins">${escHtml(revText)}</mark>`
+    };
   }
-  const result = [];
+  const dp = new Int32Array((M + 1) * (N + 1));
+  for (let i = 1; i <= M; i++)
+    for (let j = 1; j <= N; j++)
+      dp[i*(N+1)+j] = oTok[i-1] === rTok[j-1]
+        ? dp[(i-1)*(N+1)+(j-1)] + 1
+        : Math.max(dp[(i-1)*(N+1)+j], dp[i*(N+1)+(j-1)]);
+  const ops = [];
   let i = M, j = N;
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && oL[i - 1] === rL[j - 1]) {
-      result.unshift({ type: 'same', text: oL[i - 1] }); i--; j--;
-    } else if (j > 0 && (i === 0 || dp[(i - 1) * (N + 1) + j] <= dp[i * (N + 1) + (j - 1)])) {
-      result.unshift({ type: 'ins', text: rL[j - 1] }); j--;
+    if (i > 0 && j > 0 && oTok[i-1] === rTok[j-1]) {
+      ops.unshift({ t: '=', s: oTok[i-1] }); i--; j--;
+    } else if (j > 0 && (i === 0 || dp[(i-1)*(N+1)+j] <= dp[i*(N+1)+(j-1)])) {
+      ops.unshift({ t: '+', s: rTok[j-1] }); j--;
     } else {
-      result.unshift({ type: 'del', text: oL[i - 1] }); i--;
+      ops.unshift({ t: '-', s: oTok[i-1] }); i--;
     }
   }
-  return result;
+  let origHtml = '', revHtml = '';
+  ops.forEach(op => {
+    if (op.t === '=') {
+      origHtml += escHtml(op.s);
+      revHtml  += escHtml(op.s);
+    } else if (op.t === '-') {
+      origHtml += `<mark class="diff-del">${escHtml(op.s)}</mark>`;
+    } else {
+      revHtml  += `<mark class="diff-ins">${escHtml(op.s)}</mark>`;
+    }
+  });
+  return { origHtml, revHtml };
 }
 
-// changedLineMap: { lineNum(원본) → { orig, corr, reason } }
-const changedLineMap = {};
+function renderSpecTable(items) {
+  const count = items.length;
+  const badge = count
+    ? `<span class="spec-badge changes">⚠ ${count}건 수정</span>`
+    : `<span class="spec-badge ok">✅ 수정사항 없음</span>`;
 
-function renderSpecCompare(origText, revText) {
-  const origLines = origText.split('\n');
-  const revLines  = revText.split('\n');
-  const diff = diffLines(origLines, revLines);
-
-  // 정렬된 좌/우 배열 구성 (spacer로 높이 맞춤)
-  const left = [], right = [];
-  const changedInfoList = []; // {origLineNum, origText, revText}
-  let ln = 0, rn = 0;
-  for (let k = 0; k < diff.length; k++) {
-    const d = diff[k];
-    if (d.type === 'same') {
-      ln++; rn++;
-      left.push({ type: 'same', text: d.text, num: ln });
-      right.push({ type: 'same', text: d.text, num: rn });
-    } else if (d.type === 'del') {
-      // del 바로 뒤에 ins가 오면 "변경된 줄"로 페어링
-      const next = diff[k + 1];
-      if (next && next.type === 'ins') {
-        ln++; rn++; k++;
-        left.push({ type: 'changed', text: d.text, num: ln });
-        right.push({ type: 'new', text: next.text, num: rn });
-        changedInfoList.push({ origLineNum: ln, origText: d.text, revText: next.text });
-      } else {
-        ln++;
-        left.push({ type: 'del', text: d.text, num: ln });
-        right.push({ type: 'spacer', text: '', num: '' });
-        changedInfoList.push({ origLineNum: ln, origText: d.text, revText: '' });
-      }
-    } else { // ins (unpaired)
-      rn++;
-      left.push({ type: 'spacer', text: '', num: '' });
-      right.push({ type: 'new', text: d.text, num: rn });
-    }
+  if (count === 0) {
+    document.getElementById('specCompareContent').innerHTML =
+      `<div class="status-bar ok">✅ Ⅱ파트 수정 대상이 없습니다.</div>`;
+    return;
   }
 
-  const changeCount = changedInfoList.length;
-  const badge = changeCount
-    ? `<span class="spec-compare-badge badge-changes">⚠ ${changeCount}줄 수정필요</span>`
-    : `<span class="spec-compare-badge badge-ok">✅ 변경없음</span>`;
-
-  function buildPane(lines, isLeft) {
-    return lines.map(line => {
-      let cls = 'spec-line';
-      if      (line.type === 'changed') cls += ' line-changed';
-      else if (line.type === 'del')     cls += ' line-del';
-      else if (line.type === 'new')     cls += ' line-new';
-      else if (line.type === 'spacer')  cls += ' line-spacer';
-      const numHtml = line.num !== '' ? escHtml(String(line.num)) : '';
-      const clickAttr = isLeft && (line.type === 'changed' || line.type === 'del')
-        ? ` data-ln="${line.num}" onclick="onSpecLineClick(event, ${line.num})"`
-        : '';
-      // 오른쪽 패널: spacer 제외하고 contenteditable
-      const editAttr = !isLeft && line.type !== 'spacer'
-        ? ' contenteditable="true" data-rev="1"'
-        : '';
-      return `<div class="${cls}"${clickAttr}><div class="spec-line-num">${numHtml}</div><div class="spec-line-text"${editAttr}>${escHtml(line.text)}</div></div>`;
-    }).join('');
-  }
-
-  const truncNote = origLines.length > 600 || revLines.length > 600
-    ? '<div style="margin-top:0.5rem;font-size:0.74rem;color:var(--text-muted);text-align:center">* 최대 600줄까지 표시됩니다.</div>'
-    : '';
-
-  const rationale_note = changeCount > 0
-    ? '<div style="margin-bottom:0.5rem;font-size:0.74rem;color:#92400e;background:#fef9c3;padding:0.3rem 0.625rem;border-radius:0.375rem;border:1px solid #fde68a">💡 <strong>노란 줄</strong>을 클릭하면 수정 근거를 볼 수 있습니다.</div>'
-    : '';
+  const rows = items.map((item, idx) => {
+    const catMatch = (item.reason || '').match(/^(Ⅱ\[\d+\][^\s]*)/);
+    const catLabel = catMatch ? `<span class="why-cat">${escHtml(catMatch[1])}</span><br>` : '';
+    const reasonText = catMatch ? item.reason.replace(catMatch[1], '').trim() : (item.reason || '');
+    const { origHtml, revHtml } = wordDiff(item.original || '', item.revised || '');
+    return `<tr data-idx="${idx}">
+      <td class="td-ln">${item.line}</td>
+      <td class="td-orig">${origHtml}</td>
+      <td class="td-rev" contenteditable="true" data-idx="${idx}">${revHtml}</td>
+      <td class="td-why">${catLabel}${escHtml(reasonText)}</td>
+    </tr>`;
+  }).join('');
 
   document.getElementById('specCompareContent').innerHTML = `
-    ${rationale_note}
-    <div class="spec-compare-wrap" id="specPaneWrap">
-      <div class="spec-pane original" id="specPaneLeft">
-        <div class="spec-pane-header">📄 원본 (영문 번역 명세서)&nbsp;${badge}</div>
-        ${buildPane(left, true)}
-      </div>
-      <div class="spec-pane revised" id="specPaneRight">
-        <div class="spec-pane-header">✏️ 수정본 (직접 편집 가능)
-          <button class="btn-dl-revised" onclick="downloadRevisedSpec()">⬇ 저장</button>
-        </div>
-        ${buildPane(right, false)}
-      </div>
-    </div>${truncNote}`;
+    <div class="spec-tbl-header">
+      ${badge}
+      <button class="btn-dl-revised" onclick="downloadRevisedSpec()">⬇ 수정본 저장</button>
+    </div>
+    <div class="spec-table-wrap">
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th class="th-ln">#</th>
+            <th class="th-orig">📄 원문</th>
+            <th class="th-rev">✏️ 수정안 (직접 편집 가능)</th>
+            <th class="th-why">📋 수정근거 (검토 내용)</th>
+          </tr>
+        </thead>
+        <tbody id="specTbody">${rows}</tbody>
+      </table>
+    </div>`;
 
-  // 동기 스크롤
-  const pL = document.getElementById('specPaneLeft');
-  const pR = document.getElementById('specPaneRight');
-  let syncing = false;
-  pL.addEventListener('scroll', () => { if (!syncing) { syncing = true; pR.scrollTop = pL.scrollTop; syncing = false; } });
-  pR.addEventListener('scroll', () => { if (!syncing) { syncing = true; pL.scrollTop = pR.scrollTop; syncing = false; } });
-
-  // 편집 감지 → user-edited 클래스 추가
-  pR.addEventListener('input', e => {
-    const cell = e.target.closest('[data-rev]');
-    if (cell) cell.closest('.spec-line')?.classList.add('user-edited');
+  // 편집 감지 → row 표시 + specRevisions 동기화
+  document.getElementById('specTbody').addEventListener('input', e => {
+    const cell = e.target.closest('[data-idx]');
+    if (!cell) return;
+    const idx = parseInt(cell.dataset.idx);
+    cell.closest('tr').classList.add('row-edited');
+    if (specRevisions[idx]) specRevisions[idx].revised = cell.textContent;
   });
-
-  return changedInfoList;
 }
 
-// ── 수정근거 로드 (변경된 줄 목록 → AI에서 이유 추출) ──
-async function loadChangeRationale(changedList) {
-  if (!changedList || changedList.length === 0) return;
-  // changedLineMap 초기화
-  Object.keys(changedLineMap).forEach(k => delete changedLineMap[k]);
-  changedList.forEach(c => { changedLineMap[c.origLineNum] = { orig: c.origText, corr: c.revText, reason: null }; });
-
-  const linesSummary = changedList.slice(0, 30).map((c, i) =>
-    `${i + 1}. 줄 ${c.origLineNum}: [원본] ${c.origText.substring(0, 100)}${c.origText.length > 100 ? '...' : ''}\n   [수정] ${c.revText.substring(0, 100)}${c.revText.length > 100 ? '...' : ''}`
-  ).join('\n');
-
-  const reviewSummary = resultMarkdown.length > 8000
-    ? resultMarkdown.substring(0, 8000) + '\n...(이하 생략)'
-    : resultMarkdown;
-
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-      body: JSON.stringify({
-        model: API_MODEL,
-        messages: [
-          { role: 'system', content: '특허 번역 검토 전문가입니다. 검토 결과를 참고하여, 각 수정된 줄의 수정 근거를 간결하게 한국어로 설명하세요.\n출력: JSON 배열 [{ln: 줄번호, reason: "수정근거"}] 형식만 출력하세요. 코드블록 없이 JSON만.' },
-          { role: 'user', content: `[수정된 줄 목록]\n${linesSummary}\n\n---\n\n[검토 결과 (참고)]\n${reviewSummary}` }
-        ],
-        max_completion_tokens: 2048,
-        temperature: 0
-      })
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    let raw = data.choices[0].message.content.trim()
-      .replace(/^```[^\n]*\n?/, '').replace(/\n?```$/, '').trim();
-    const items = JSON.parse(raw);
-    if (!Array.isArray(items)) return;
-    // changedLineMap에 reason 채우기
-    items.forEach(item => {
-      if (changedLineMap[item.ln]) changedLineMap[item.ln].reason = item.reason;
-      // ln이 없을 때 원본 줄 번호 순서대로 매칭
-    });
-    // 줄 번호 순서로 changedList와 매칭 (ln이 index인 경우 보정)
-    if (items.length === changedList.length && items[0]?.ln !== changedList[0]?.origLineNum) {
-      items.forEach((item, i) => {
-        const c = changedList[i];
-        if (c && changedLineMap[c.origLineNum]) changedLineMap[c.origLineNum].reason = item.reason;
-      });
-    }
-    // 줄 요소에 has-rationale 클래스 추가
-    document.querySelectorAll('#specPaneLeft .spec-line[data-ln]').forEach(el => {
-      const ln = parseInt(el.dataset.ln);
-      if (changedLineMap[ln]?.reason) el.classList.add('has-rationale');
-    });
-  } catch (e) { /* 오류 무시 — 팝오버는 "아직 없음" 상태로 표시 */ }
-}
-
-// ── 줄 클릭 → 팝오버 표시 ──
-function onSpecLineClick(event, lineNum) {
-  event.stopPropagation();
-  const info = changedLineMap[lineNum];
-  const pop = document.getElementById('rationalePopover');
-  document.getElementById('rpTitle').textContent = `📋 ${lineNum}번 줄 · 수정 근거`;
-  const origEl = document.getElementById('rpOrig');
-  const corrEl = document.getElementById('rpCorr');
-  const reasonEl = document.getElementById('rpReason');
-
-  if (info?.orig) { origEl.textContent = info.orig; origEl.style.display = 'block'; } else origEl.style.display = 'none';
-  if (info?.corr) { corrEl.textContent = info.corr; corrEl.style.display = 'block'; } else corrEl.style.display = 'none';
-
-  if (info?.reason) {
-    reasonEl.innerHTML = `<strong>수정 근거:</strong> ${escHtml(info.reason)}`;
-  } else {
-    reasonEl.innerHTML = '<span class="rp-loading">⏳ 수정 근거를 불러오는 중입니다...</span>';
-  }
-
-  // 팝오버 위치: 클릭 위치 기준
-  const rect = event.currentTarget.getBoundingClientRect();
-  let top = rect.top + window.scrollY;
-  let left = rect.right + 12;
-  pop.style.display = 'block';
-  pop.classList.add('open');
-  // 화면 밖으로 나가면 왼쪽에 배치
-  if (left + 430 > window.innerWidth) left = rect.left - 430;
-  if (left < 8) left = 8;
-  if (top + 300 > window.innerHeight + window.scrollY) top = window.innerHeight + window.scrollY - 310;
-  pop.style.top  = top + 'px';
-  pop.style.left = left + 'px';
-}
-
-function closeRationalePopover() {
-  document.getElementById('rationalePopover').classList.remove('open');
-  document.getElementById('rationalePopover').style.display = 'none';
-}
-
-// 팝오버 외부 클릭 시 닫기
-document.addEventListener('click', e => {
-  const pop = document.getElementById('rationalePopover');
-  if (pop.classList.contains('open') && !pop.contains(e.target)) closeRationalePopover();
-});
-
-// ── 수정본 다운로드 ──
+// ── 수정본 다운로드 (원문에 수정사항 적용 후 전체 저장) ──
 function downloadRevisedSpec() {
-  const pR = document.getElementById('specPaneRight');
-  if (!pR) { alert('수정본이 없습니다. 먼저 수정본을 생성해 주세요.'); return; }
-  const lines = [];
-  pR.querySelectorAll('.spec-line').forEach(row => {
-    if (row.classList.contains('line-spacer')) return; // 정렬용 공백 줄 제외
-    const cell = row.querySelector('.spec-line-text');
-    lines.push(cell ? cell.textContent : '');
+  if (!specRevisions.length) { alert('수정본이 없습니다. 먼저 수정본을 생성해 주세요.'); return; }
+  const enLines = (contents.en || '').split('\n');
+
+  // DOM에서 편집된 최신 값 반영
+  document.querySelectorAll('#specTbody [data-idx]').forEach(cell => {
+    const idx = parseInt(cell.dataset.idx);
+    if (specRevisions[idx]) specRevisions[idx].revised = cell.textContent;
   });
-  const text = lines.join('\n');
+
+  // 줄번호 → 수정안 맵
+  const revMap = {};
+  specRevisions.forEach(r => { revMap[r.line] = r.revised; });
+
+  const resultLines = enLines.map((l, i) => revMap[i + 1] !== undefined ? revMap[i + 1] : l);
+  const text = resultLines.join('\n');
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   const baseName = (document.getElementById('fname-en').textContent || '영문명세서')
     .replace(/^✓\s*/, '').replace(/\.[^.]+$/, '');
-  a.download = `${baseName}_수정본.md`;
+  a.download = `${baseName}_수정본.txt`;
   a.click();
   URL.revokeObjectURL(url);
 }
