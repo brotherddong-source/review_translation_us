@@ -36,34 +36,44 @@
 
     /* ── Header ── */
     header {
-      background: #f7f7f7;
-      color: var(--text);
-      padding: 0.875rem 1.5rem;
+      background: #2B2D7B;
+      color: #ffffff;
+      padding: 0 1.75rem;
+      height: 60px;
       display: flex;
       align-items: center;
-      gap: 0.875rem;
-      border-bottom: 1px solid var(--border);
+      gap: 0;
       position: sticky;
       top: 0;
       z-index: 100;
-    }
-    .header-icon { font-size: 1.75rem; }
-    .header-text { flex: 1; }
-    .header-text h1 { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
-    .header-text p  { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem; }
 
-    .api-badge {
-      display: flex; align-items: center; gap: 0.375rem;
-      font-size: 0.72rem; font-weight: 600;
-      padding: 0.3rem 0.75rem;
-      border-radius: 2rem;
-      border: 1.5px solid;
     }
-    .api-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
-    .api-badge.ok   { color: #16a34a; border-color: #bbf7d0; }
-    .api-badge.ok   .dot { background: #4ade80; }
-    .api-badge.fail { color: #dc2626; border-color: #fecaca; }
-    .api-badge.fail .dot { background: #f87171; }
+    .header-logo {
+      height: 26px;
+      width: auto;
+      display: block;
+      flex-shrink: 0;
+    }
+    .header-divider {
+      width: 1px;
+      height: 32px;
+      background: rgba(255,255,255,0.3);
+      margin: 0 1.25rem;
+      flex-shrink: 0;
+    }
+    .header-text { flex: 1; min-width: 0; }
+    .header-text h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; color: #ffffff; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-text p  { font-size: 0.7rem; color: rgba(255,255,255,0.6); margin-top: 0.2rem; letter-spacing: 0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .api-badge { display: none; }
+
+    @media (max-width: 480px) {
+      header { padding: 0 1rem; height: 52px; }
+      .header-logo { height: 20px; }
+      .header-divider { margin: 0 0.75rem; height: 24px; }
+      .header-text h1 { font-size: 0.9rem; }
+      .header-text p  { display: none; }
+    }
 
     /* ── Alert Banner ── */
     .alert {
@@ -261,6 +271,7 @@
       min-height: 400px; text-align: center; gap: 0.875rem;
     }
     .placeholder-icon  { font-size: 3.5rem; }
+    .placeholder-logo  { width: 140px; height: auto; opacity: 0.18; }
     .placeholder-title { font-size: 1rem; font-weight: 600; color: var(--text); }
     .placeholder-desc  { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.6; }
 
@@ -404,13 +415,11 @@
 
 <!-- ── Header ── -->
 <header>
+  <img src="iplab-logo-white.png" alt="IPLAB" class="header-logo">
+  <div class="header-divider"></div>
   <div class="header-text">
     <h1>특허 번역 검토기</h1>
     <p>Patent Translation Review System · Powered by OpenAI</p>
-  </div>
-  <div class="api-badge fail" id="apiBadge">
-    <span class="dot"></span>
-    <span id="apiBadgeText">연결 안됨</span>
   </div>
 </header>
 
@@ -497,6 +506,7 @@
       <div id="statusBar" style="display:none"></div>
       <div class="results-content" id="resultsContent">
         <div class="results-placeholder">
+          <img src="iplab-logo-blue.png" alt="IPLAB" class="placeholder-logo">
           <div class="placeholder-title">번역 검토를 시작하세요</div>
           <div class="placeholder-desc">
             파일을 업로드하고<br>
@@ -555,7 +565,7 @@ async function loadConfig() {
       }
       if (data.MODEL) API_MODEL = data.MODEL;
       if (API_KEY) {
-        setApiBadge(true, `GPT 연결됨 (${API_MODEL})`);
+        setApiBadge(true, 'API 연결됨');
         return;
       }
     }
@@ -573,7 +583,7 @@ async function loadConfig() {
       if (k === 'MODEL' && val) API_MODEL = val;
     }
     if (API_KEY) {
-      setApiBadge(true, `GPT 연결됨 (${API_MODEL})`);
+      setApiBadge(true, 'API 연결됨');
     } else {
       setApiBadge(false, '연결 안됨');
       showAlert('config.txt 에 OPENAI_API_KEY를 입력해 주세요.');
